@@ -136,6 +136,15 @@ details .form{margin-top:12px}
 .chart .pt.last{fill:var(--accent)}
 .bodylist{display:flex;flex-direction:column;gap:6px;font-size:.86rem}
 .bodylist .it{display:flex;justify-content:space-between;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:6px;flex-wrap:wrap}
+/* abas */
+[data-tab]:not(.on){display:none!important}
+.wrap{padding-block:18px calc(96px + env(safe-area-inset-bottom,0px))}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:6px max(8px,calc((100% - 600px)/2)) calc(6px + env(safe-area-inset-bottom,0px))}
+.tabbar button{border:none;background:none;border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:var(--muted);font-size:.72rem;font-weight:600}
+.tabbar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabbar button[aria-current="page"]{color:var(--accent);background:var(--soft)}
+.linkbtn{border:none;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;font-size:inherit}
+.tabtitle{display:none}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
@@ -148,17 +157,17 @@ details .form{margin-top:12px}
       <h1>Diário Nutri</h1>
       <div id="conn">Conectando...</div>
     </div>
-    <div class="datenav">
+    <div class="datenav" id="datenav">
       <button id="prev" aria-label="Dia anterior">‹</button>
       <div id="dateLabel">Hoje</div>
       <button id="next" aria-label="Próximo dia">›</button>
     </div>
   </header>
 
-  <div id="setupBanner" class="banner" hidden>Preencha seu perfil lá embaixo (peso, altura, idade) para eu calcular suas metas de calorias e proteína.</div>
-  <div id="backupBanner" class="banner" hidden>Faz tempo que você não faz backup. Vá em <b>Configurações</b> e toque em <b>Baixar backup</b> para não perder seu histórico.</div><div id="keyBanner" class="banner" hidden>Primeiro passo: coloque sua chave API da Anthropic em <b>Configurações</b>, no fim da página. Ela fica salva só neste aparelho.</div>
+  <div id="setupBanner" class="banner" data-tab="hoje" hidden>Preencha seu perfil (peso, altura, idade) para eu calcular suas metas de calorias e proteína. <button class="linkbtn" data-go="ajustes">Abrir Ajustes</button></div>
+  <div id="backupBanner" class="banner" data-tab="hoje" hidden>Faz tempo que você não faz backup. Toque em <b>Baixar backup</b> em Ajustes para não perder seu histórico. <button class="linkbtn" data-go="ajustes">Abrir Ajustes</button></div><div id="keyBanner" class="banner" data-tab="hoje" hidden>Primeiro passo: coloque sua chave API da Anthropic em Ajustes. Ela fica salva só neste aparelho. <button class="linkbtn" data-go="ajustes">Abrir Ajustes</button></div>
 
-  <section class="panel" aria-label="Resumo do dia">
+  <section class="panel" data-tab="hoje" aria-label="Resumo do dia">
     <div>
       <div class="eyebrow">Calorias do dia</div>
       <div class="kcal"><span class="big num" id="kcalNow">0</span><span class="of">de <span class="num" id="kcalGoal">…</span> kcal</span></div>
@@ -172,12 +181,12 @@ details .form{margin-top:12px}
     <div class="chips" id="statusChips"></div>
   </section>
 
-  <section class="panel" aria-label="Últimos 7 dias">
+  <section class="panel" data-tab="hoje" aria-label="Últimos 7 dias">
     <div class="row" style="justify-content:space-between"><h2>Últimos 7 dias</h2><span class="hint">verde = bateu a meta</span></div>
     <div class="week" id="week"></div>
   </section>
 
-  <section class="panel" aria-label="Lançar refeição">
+  <section class="panel" data-tab="hoje" aria-label="Lançar refeição">
     <h2>Lançar refeição</h2>
     <div class="mealpick" id="mealPick"></div>
     <textarea id="mealText" placeholder="Ex.: 2 pães franceses com 2 ovos mexidos e café com leite integral (200 ml)"></textarea>
@@ -205,12 +214,12 @@ details .form{margin-top:12px}
     <div id="preview" class="preview" hidden></div>
   </section>
 
-  <section class="panel" aria-label="Refeições do dia">
+  <section class="panel" data-tab="hoje" aria-label="Refeições do dia">
     <h2 id="mealsTitle">Refeições de hoje</h2>
     <div id="mealsList"><p class="empty">Nada lançado ainda. Use o campo acima para lançar sua primeira refeição.</p></div>
   </section>
 
-  <section class="panel" aria-label="Análise da nutricionista">
+  <section class="panel" data-tab="nutri" aria-label="Análise da nutricionista">
     <div>
       <h2>Sua nutri</h2>
       <p class="hint">Analisa o dia ou a semana, aponta o que faltou e o que exagerou, pensando no seu objetivo.</p>
@@ -223,7 +232,7 @@ details .form{margin-top:12px}
     <div class="md" id="nutriOut"><p class="empty">Quando pedir uma análise, ela aparece aqui e fica salva para você rever.</p></div>
   </section>
 
-  <section class="panel" aria-label="Corpo">
+  <section class="panel" data-tab="corpo" aria-label="Corpo">
     <div class="row" style="justify-content:space-between">
       <h2>Corpo e bioimpedância</h2>
       <span class="stamp" id="bodyLast"></span>
@@ -253,7 +262,7 @@ details .form{margin-top:12px}
     <div class="bodylist" id="bodyList"></div>
   </section>
 
-  <section class="panel" aria-label="Dieta">
+  <section class="panel" data-tab="dieta" aria-label="Dieta">
     <div>
       <h2>Minha dieta</h2>
       <p class="hint">Cardápio montado com base no seu perfil, metas, última medição e no que você costuma comer.</p>
@@ -268,9 +277,10 @@ details .form{margin-top:12px}
     <div class="md" id="dietOut"><p class="empty">Nenhuma dieta gerada ainda.</p></div>
   </section>
 
-  <section class="panel">
-    <details id="profileBox">
-      <summary>Meu perfil e metas</summary>
+  <section class="panel" data-tab="ajustes" id="profileBox" aria-label="Perfil e metas">
+    <div>
+      <h2>Meu perfil e metas</h2>
+      <p class="hint">Seus dados e objetivo. As metas de calorias e macros saem daqui.</p>
       <form class="form" id="profileForm">
         <label>Sexo<select id="pfSexo"><option value="m">Masculino</option><option value="f">Feminino</option></select></label>
         <label>Idade<input id="pfIdade" type="number" inputmode="numeric" placeholder="anos"></label>
@@ -292,10 +302,10 @@ details .form{margin-top:12px}
         <p class="full hint" id="targetsNote"></p>
         <div class="full row"><button class="primary" type="submit" id="pfSave">Salvar perfil</button><span class="hint" id="pfMsg"></span></div>
       </form>
-    </details>
+    </div>
   </section>
-  <section class="panel" id="settings" aria-label="Configurações">
-    <h2>Configurações</h2>
+  <section class="panel" id="settings" data-tab="ajustes" aria-label="Configurações">
+    <h2>Chave API e backup</h2>
     <div class="form">
       <label class="full">Chave API da Anthropic<input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
       <label class="full">Modelo<select id="apiModel">
@@ -309,6 +319,14 @@ details .form{margin-top:12px}
     <div class="row"><button id="exportBtn">Baixar backup</button><label class="hint" for="importIn">Restaurar backup: <input type="file" id="importIn" accept="application/json,.json" style="max-width:220px"></label></div>
   </section>
 </div>
+
+<nav class="tabbar" id="tabbar" aria-label="Seções">
+  <button data-go="hoje"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg><span>Hoje</span></button>
+  <button data-go="nutri"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-5 4z"/></svg><span>Nutri</span></button>
+  <button data-go="corpo"><svg viewBox="0 0 24 24"><path d="M4 19l5-6 4 3 7-9"/><path d="M4 4v15h16"/></svg><span>Corpo</span></button>
+  <button data-go="dieta"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg><span>Dieta</span></button>
+  <button data-go="ajustes"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>Ajustes</span></button>
+</nav>
 
 <script>
 /* Adaptador: versão independente (dados neste aparelho + API da Anthropic com a chave do usuário) */
@@ -454,7 +472,7 @@ let S=null,AI=null;
 let sel=today(), profile=null, meals=[], body=[], unsub=null, pending=null, photo=null, ctl=null, metric="peso";
 let selMeal=(()=>{const h=new Date().getHours();return h<10?"cafe":h<12?"lanche1":h<15?"almoco":h<18?"lanche2":h<21?"jantar":"ceia"})();
 
-const ERR={cancelled:"Cancelado.",not_granted:"Você não liberou o uso do Claude para este app.",rate_limited:"Muitas análises seguidas. Espere um pouco e tente de novo.",image_rejected:"Essa foto não deu para ler. Tente outra.",invalid_json:"A resposta veio estranha. Tente de novo.",empty:"Não consegui identificar os alimentos. Descreva com mais detalhes.",no_key:"Coloque sua chave API em Configurações, no fim da página.",bad_key:"Chave API inválida. Confira em Configurações.",no_credit:"Sua conta da API está sem crédito.",network:"Sem internet ou a API não respondeu."};
+const ERR={cancelled:"Cancelado.",not_granted:"Você não liberou o uso do Claude para este app.",rate_limited:"Muitas análises seguidas. Espere um pouco e tente de novo.",image_rejected:"Essa foto não deu para ler. Tente outra.",invalid_json:"A resposta veio estranha. Tente de novo.",empty:"Não consegui identificar os alimentos. Descreva com mais detalhes.",no_key:"Coloque sua chave API na aba Ajustes.",bad_key:"Chave API inválida. Confira na aba Ajustes.",no_credit:"Sua conta da API está sem crédito.",network:"Sem internet ou a API não respondeu."};
 const errMsg=e=>ERR[e?.code]||"Não consegui agora. Tente de novo.";
 
 /* ---------- metas ---------- */
@@ -802,7 +820,7 @@ function eatingHabits(){
 $("#dietBtn").addEventListener("click",async()=>{
   if(!AI){$("#dietMsg").textContent="Indisponível aqui.";return;}
   const T=targets(profile);
-  if(!T){$("#dietMsg").textContent="Preencha e salve seu perfil primeiro.";$("#profileBox").open=true;return;}
+  if(!T){$("#dietMsg").textContent="Preencha e salve seu perfil primeiro.";showTab("ajustes");return;}
   const pref=$("#dietPref").value.trim();
   if(S&&profile&&pref!==(profile.dietaPref||"")) S.setProfile({...profile,dietaPref:pref}).catch(()=>{});
   $("#dietBtn").disabled=true;$("#dietMsg").textContent="";$("#dietStamp").textContent="";$("#dietOut").innerHTML=`<p class="empty">Montando sua dieta... (pode levar até 1 minuto)</p>`;
@@ -831,6 +849,22 @@ ${STYLE}`;
   $("#dietBtn").disabled=false;
 });
 
+/* ---------- abas ---------- */
+const TABS=["hoje","nutri","corpo","dieta","ajustes"];
+let curTab="hoje", everHadTab=false;
+try{const t=localStorage.getItem("diarioNutri.tab");if(TABS.includes(t)){curTab=t;everHadTab=true;}}catch(e){}
+function showTab(t){
+  if(!TABS.includes(t)) t="hoje";
+  const changed=t!==curTab;curTab=t;
+  document.querySelectorAll("[data-tab]").forEach(el=>el.classList.toggle("on",el.dataset.tab.split(" ").includes(t)));
+  document.querySelectorAll("#tabbar button").forEach(b=>b.setAttribute("aria-current",b.dataset.go===t?"page":"false"));
+  $("#datenav").style.visibility=(t==="hoje"||t==="nutri")?"visible":"hidden";
+  try{localStorage.setItem("diarioNutri.tab",t)}catch(e){}
+  if(changed) window.scrollTo(0,0);
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b){showTab(b.dataset.go);everHadTab=true;}});
+showTab(curTab);
+
 /* ---------- navegação e boot ---------- */
 function subscribe(){
   unsub?.();unsub=null;
@@ -853,7 +887,7 @@ render();fillProfile();
   S.onProfile(p=>{
     profile=p;
     if(!document.activeElement?.closest("#profileForm")) fillProfile();
-    if(!profile) $("#profileBox").open=true;
+    if(!profile&&!everHadTab) showTab("ajustes");
     render();
   });
   S.onBody(list=>{body=list.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));render();showTargets();});
