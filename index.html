@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Diário Nutri">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Diário Nutri</title>
+<meta name="theme-color" content="#2F7A4E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: coluna única estilo caderno de campo; resumo do dia, lançamento, refeições, nutri, corpo, dieta e perfil */
+:root{
+  --bg:#F3F5F1; --surface:#FFFFFF; --line:#DCE2D8; --ink:#1B2A22; --muted:#5E6E64;
+  --accent:#2F7A4E; --accent-ink:#FFFFFF; --soft:#E4EFE6;
+  --prot:#B5446E; --carb:#C98A16; --gord:#5B5BB0;
+  --ok:#2F7A4E; --warn:#B7791F; --bad:#C0392B;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111713; --surface:#18211B; --line:#2B372F; --ink:#E6EDE7; --muted:#9AAA9F;
+  --accent:#5FBF86; --accent-ink:#0D1510; --soft:#1F3226;
+  --prot:#E27BA3; --carb:#E3B04B; --gord:#9A9AF0;
+  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111713; --surface:#18211B; --line:#2B372F; --ink:#E6EDE7; --muted:#9AAA9F;
+  --accent:#5FBF86; --accent-ink:#0D1510; --soft:#1F3226;
+  --prot:#E27BA3; --carb:#E3B04B; --gord:#9A9AF0;
+  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+.wrap{max-width:600px;margin:0 auto;padding-inline:16px;padding-block:18px 60px;display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:var(--f-display);margin:0;text-wrap:balance}
+h1{font-size:1.55rem;font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.08rem;font-weight:600}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:.55em .9em}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+input,textarea,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.55em .7em;width:100%}
+textarea{resize:vertical;min-height:84px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.datenav{display:flex;align-items:center;gap:6px}
+.datenav button{padding:.4em .7em}
+#dateLabel{min-width:128px;text-align:center;font-weight:600}
+#conn{font-size:.8rem;color:var(--muted)}
+.kcal{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.kcal .big{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1}
+.kcal .of{color:var(--muted)}
+.meter{height:10px;background:var(--soft);border-radius:99px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+.macros{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.macro .lbl{display:flex;justify-content:space-between;font-size:.82rem;gap:4px;flex-wrap:wrap}
+.macro .meter{height:7px}
+.macro.p i{background:var(--prot)} .macro.c i{background:var(--carb)} .macro.g i{background:var(--gord)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:.78rem;font-weight:600;padding:.25em .65em;border-radius:99px;border:1px solid currentColor}
+.chip.ok{color:var(--ok)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)} .chip.mut{color:var(--muted)}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:110px;position:relative;padding-top:6px}
+.week .col{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.week .bar{width:70%;max-width:30px;background:var(--line);border-radius:6px 6px 2px 2px;min-height:2px}
+.week .bar.hit{background:var(--accent)} .week .bar.low{background:var(--carb)} .week .bar.sel{outline:2px solid var(--ink);outline-offset:1px}
+.week .d{font-size:.7rem;line-height:14px;color:var(--muted)}
+.goal-line{position:absolute;left:0;right:0;border-top:1px dashed var(--muted);pointer-events:none}
+.goal-line span{position:absolute;right:0;top:-1.3em;font-size:.68rem;color:var(--muted);background:var(--surface);padding-inline:4px}
+.mealpick,.seg{display:flex;gap:6px;flex-wrap:wrap}
+.mealpick button,.seg button{font-size:.83rem;padding:.35em .75em;border-radius:99px}
+.mealpick button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.photo img{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.preview{border:1px dashed var(--accent);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--soft)}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{text-align:right;padding:.35em .3em;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em}
+td .x{border:none;background:none;color:var(--muted);padding:0 .2em;font-size:1rem}
+.tbl{overflow-x:auto}
+.manual{display:grid;grid-template-columns:2fr repeat(4,minmax(0,1fr));gap:6px}
+@media (max-width:480px){.manual{grid-template-columns:repeat(4,minmax(0,1fr))}.manual .n{grid-column:1/-1}}
+.meal{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
+.meal:first-child{border-top:none;padding-top:0}
+.meal-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.meal-h b{font-family:var(--f-display);font-weight:600}
+.meal .txt{color:var(--muted);font-size:.88rem;margin:0}
+.meal .items{font-size:.86rem;margin:0;padding-left:1.1em}
+.note{font-size:.86rem;margin:0;padding:.5em .7em;border-radius:8px;background:var(--soft)}
+.note.atencao{border-left:3px solid var(--warn)} .note.alerta{border-left:3px solid var(--bad)} .note.bom{border-left:3px solid var(--ok)}
+.del{font-size:.78rem;padding:.2em .6em;color:var(--muted)}
+.del.arm{color:var(--bad);border-color:var(--bad)}
+.empty{color:var(--muted);font-size:.9rem;margin:0}
+.md{font-size:.93rem;line-height:1.6;max-width:65ch}
+.md p{margin:.4em 0} .md ul{margin:.3em 0;padding-left:1.2em}
+.md h3{font-family:var(--f-display);font-size:1rem;margin:.9em 0 .2em}
+.stamp{font-size:.76rem;color:var(--muted)}
+details summary{cursor:pointer;font-family:var(--f-display);font-weight:600;font-size:1.08rem;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:" +";color:var(--muted)} details[open] summary::after{content:" −"}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.form.tight{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:480px){.form.tight{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--muted);min-width:0}
+.form .full{grid-column:1/-1}
+details .form{margin-top:12px}
+.targets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;text-align:center}
+.targets div{background:var(--soft);border-radius:10px;padding:8px 4px}
+.targets b{display:block;font-family:var(--f-num);font-size:1.02rem}
+.targets span{font-size:.72rem;color:var(--muted)}
+.banner{background:var(--soft);border-radius:12px;padding:12px;font-size:.9rem}
+/* corpo */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:10px}
+.stat .v{font-family:var(--f-num);font-size:1.15rem}
+.stat .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stat .dlt{font-size:.75rem;font-family:var(--f-num)}
+.dlt.up{color:var(--ok)} .dlt.down{color:var(--bad)} .dlt.flat{color:var(--muted)}
+.chart svg{width:100%;height:auto;display:block}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .tx{fill:var(--muted);font:17px var(--f-num)}
+.chart .ln{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.chart .ar{fill:var(--soft)}
+.chart .pt{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.chart .pt.last{fill:var(--accent)}
+.bodylist{display:flex;flex-direction:column;gap:6px;font-size:.86rem}
+.bodylist .it{display:flex;justify-content:space-between;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:6px;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Diário Nutri</h1>
+      <div id="conn">Conectando...</div>
+    </div>
+    <div class="datenav">
+      <button id="prev" aria-label="Dia anterior">‹</button>
+      <div id="dateLabel">Hoje</div>
+      <button id="next" aria-label="Próximo dia">›</button>
+    </div>
+  </header>
+
+  <div id="setupBanner" class="banner" hidden>Preencha seu perfil lá embaixo (peso, altura, idade) para eu calcular suas metas de calorias e proteína.</div>
+  <div id="backupBanner" class="banner" hidden>Faz tempo que você não faz backup. Vá em <b>Configurações</b> e toque em <b>Baixar backup</b> para não perder seu histórico.</div><div id="keyBanner" class="banner" hidden>Primeiro passo: coloque sua chave API da Anthropic em <b>Configurações</b>, no fim da página. Ela fica salva só neste aparelho.</div>
+
+  <section class="panel" aria-label="Resumo do dia">
+    <div>
+      <div class="eyebrow">Calorias do dia</div>
+      <div class="kcal"><span class="big num" id="kcalNow">0</span><span class="of">de <span class="num" id="kcalGoal">…</span> kcal</span></div>
+    </div>
+    <div class="meter"><i id="kcalBar" style="width:0%"></i></div>
+    <div class="macros">
+      <div class="macro p"><div class="lbl"><span>Proteína</span><span class="num" id="pTxt">0 g</span></div><div class="meter"><i id="pBar" style="width:0%"></i></div></div>
+      <div class="macro c"><div class="lbl"><span>Carbo</span><span class="num" id="cTxt">0 g</span></div><div class="meter"><i id="cBar" style="width:0%"></i></div></div>
+      <div class="macro g"><div class="lbl"><span>Gordura</span><span class="num" id="gTxt">0 g</span></div><div class="meter"><i id="gBar" style="width:0%"></i></div></div>
+    </div>
+    <div class="chips" id="statusChips"></div>
+  </section>
+
+  <section class="panel" aria-label="Últimos 7 dias">
+    <div class="row" style="justify-content:space-between"><h2>Últimos 7 dias</h2><span class="hint">verde = bateu a meta</span></div>
+    <div class="week" id="week"></div>
+  </section>
+
+  <section class="panel" aria-label="Lançar refeição">
+    <h2>Lançar refeição</h2>
+    <div class="mealpick" id="mealPick"></div>
+    <textarea id="mealText" placeholder="Ex.: 2 pães franceses com 2 ovos mexidos e café com leite integral (200 ml)"></textarea>
+    <div class="photo">
+      <label for="photoIn" class="hint" id="photoWrap"><input type="file" id="photoIn" accept="image/*" style="max-width:240px"></label>
+      <img id="photoPrev" alt="Foto do prato" hidden>
+      <button id="photoClear" hidden>Tirar foto</button>
+    </div>
+    <p class="hint" id="aiHint">Escreva o que comeu e, se quiser, mande a foto do prato. A nutri calcula tudo e comenta.</p>
+    <div class="row">
+      <button class="primary" id="analyze">Analisar refeição</button>
+      <button id="stopBtn" hidden>Parar</button>
+      <button id="manualToggle">Lançar manual</button>
+    </div>
+    <div id="manualBox" hidden>
+      <div class="manual">
+        <input class="n" id="mNome" placeholder="Alimento e porção">
+        <input id="mK" type="number" inputmode="decimal" placeholder="kcal">
+        <input id="mP" type="number" inputmode="decimal" placeholder="prot g">
+        <input id="mC" type="number" inputmode="decimal" placeholder="carb g">
+        <input id="mG" type="number" inputmode="decimal" placeholder="gord g">
+      </div>
+      <div class="row" style="margin-top:8px"><button id="mAdd">Adicionar item</button></div>
+    </div>
+    <div id="preview" class="preview" hidden></div>
+  </section>
+
+  <section class="panel" aria-label="Refeições do dia">
+    <h2 id="mealsTitle">Refeições de hoje</h2>
+    <div id="mealsList"><p class="empty">Nada lançado ainda. Use o campo acima para lançar sua primeira refeição.</p></div>
+  </section>
+
+  <section class="panel" aria-label="Análise da nutricionista">
+    <div>
+      <h2>Sua nutri</h2>
+      <p class="hint">Analisa o dia ou a semana, aponta o que faltou e o que exagerou, pensando no seu objetivo.</p>
+    </div>
+    <div class="row">
+      <button class="primary" id="dayBtn">Analisar o dia</button>
+      <button id="weekBtn">Analisar a semana</button>
+    </div>
+    <div class="stamp" id="nutriStamp"></div>
+    <div class="md" id="nutriOut"><p class="empty">Quando pedir uma análise, ela aparece aqui e fica salva para você rever.</p></div>
+  </section>
+
+  <section class="panel" aria-label="Corpo">
+    <div class="row" style="justify-content:space-between">
+      <h2>Corpo e bioimpedância</h2>
+      <span class="stamp" id="bodyLast"></span>
+    </div>
+    <div class="stats" id="bodyStats"></div>
+    <div class="seg" id="bodyMetric"></div>
+    <div class="chart" id="bodyChart"></div>
+    <details id="bodyAdd">
+      <summary>Nova medição</summary>
+      <form class="form tight" id="bodyForm">
+        <label>Data<input id="bData" type="date"></label>
+        <label>Peso (kg)<input id="bPeso" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Gordura (%)<input id="bGord" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Massa muscular (kg)<input id="bMusc" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Massa magra (kg)<input id="bMagra" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Massa gorda (kg)<input id="bMGorda" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Água (%)<input id="bAgua" type="number" step="0.1" inputmode="decimal"></label>
+        <label>Gordura visceral<input id="bVisc" type="number" step="0.5" inputmode="decimal"></label>
+        <label>Taxa metabólica (kcal)<input id="bTmb" type="number" inputmode="numeric"></label>
+        <label>Cintura (cm)<input id="bCint" type="number" step="0.5" inputmode="decimal"></label>
+        <label>Braço (cm)<input id="bBraco" type="number" step="0.5" inputmode="decimal"></label>
+        <label>Origem<select id="bFonte"><option value="Balança">Balança</option><option value="Bioimpedância">Bioimpedância</option><option value="Nutricionista">Nutricionista</option></select></label>
+        <label class="full">Observação<input id="bObs" placeholder="Ex.: medido em jejum, de manhã"></label>
+        <div class="full row"><button class="primary" type="submit" id="bSave">Salvar medição</button><span class="hint" id="bMsg">Só o peso é obrigatório.</span></div>
+      </form>
+    </details>
+    <div class="bodylist" id="bodyList"></div>
+  </section>
+
+  <section class="panel" aria-label="Dieta">
+    <div>
+      <h2>Minha dieta</h2>
+      <p class="hint">Cardápio montado com base no seu perfil, metas, última medição e no que você costuma comer.</p>
+    </div>
+    <label class="hint" for="dietPref">O que levar em conta (horário do treino, orçamento, o que gosta ou não come, marmita)</label>
+    <textarea id="dietPref" placeholder="Ex.: treino às 19h, levo marmita pro trabalho, gosto de frango e ovo, não como peixe, orçamento apertado"></textarea>
+    <div class="row">
+      <button class="primary" id="dietBtn">Gerar dieta</button>
+      <span class="hint" id="dietMsg"></span>
+    </div>
+    <div class="stamp" id="dietStamp"></div>
+    <div class="md" id="dietOut"><p class="empty">Nenhuma dieta gerada ainda.</p></div>
+  </section>
+
+  <section class="panel">
+    <details id="profileBox">
+      <summary>Meu perfil e metas</summary>
+      <form class="form" id="profileForm">
+        <label>Sexo<select id="pfSexo"><option value="m">Masculino</option><option value="f">Feminino</option></select></label>
+        <label>Idade<input id="pfIdade" type="number" inputmode="numeric" placeholder="anos"></label>
+        <label>Altura (cm)<input id="pfAltura" type="number" inputmode="numeric" placeholder="175"></label>
+        <label>Peso (kg)<input id="pfPeso" type="number" inputmode="decimal" step="0.1" placeholder="75"></label>
+        <label>Atividade<select id="pfAtiv">
+          <option value="1.2">Parado (sem treino)</option>
+          <option value="1.375">Leve (1 a 3 treinos/sem)</option>
+          <option value="1.55" selected>Moderado (3 a 5 treinos/sem)</option>
+          <option value="1.725">Alto (6 ou 7 treinos/sem)</option></select></label>
+        <label>Objetivo<select id="pfObj">
+          <option value="ganhar" selected>Ganhar massa</option>
+          <option value="manter">Manter</option>
+          <option value="perder">Emagrecer</option></select></label>
+        <label>Meta de kcal manual (opcional)<input id="pfKcal" type="number" inputmode="numeric" placeholder="deixe vazio p/ calcular"></label>
+        <label>Refeições por dia<input id="pfRef" type="number" inputmode="numeric" placeholder="5"></label>
+        <label class="full">Observações para a nutri (treino, horários, alergias, o que não come)<textarea id="pfObs" placeholder="Ex.: treino musculação à noite, não gosto de peixe"></textarea></label>
+        <div class="full targets" id="targets"></div>
+        <p class="full hint" id="targetsNote"></p>
+        <div class="full row"><button class="primary" type="submit" id="pfSave">Salvar perfil</button><span class="hint" id="pfMsg"></span></div>
+      </form>
+    </details>
+  </section>
+  <section class="panel" id="settings" aria-label="Configurações">
+    <h2>Configurações</h2>
+    <div class="form">
+      <label class="full">Chave API da Anthropic<input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+      <label class="full">Modelo<select id="apiModel">
+        <option value="claude-sonnet-5-5">Sonnet 5.5 (recomendado)</option>
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (mais barato e rápido)</option>
+        <option value="claude-opus-5-5">Opus 5.5 (mais caprichado, mais caro)</option></select></label>
+    </div>
+    <div class="row"><button class="primary" id="cfgSave">Salvar</button><button id="cfgTest">Testar chave</button><span class="hint" id="cfgMsg"></span></div>
+    <p class="hint">Seus dados ficam só neste navegador. Faça backup de vez em quando e use o mesmo arquivo para passar os dados para outro aparelho.</p>
+    <p class="hint" id="backupInfo"></p>
+    <div class="row"><button id="exportBtn">Baixar backup</button><label class="hint" for="importIn">Restaurar backup: <input type="file" id="importIn" accept="application/json,.json" style="max-width:220px"></label></div>
+  </section>
+</div>
+
+<script>
+/* Adaptador: versão independente (dados neste aparelho + API da Anthropic com a chave do usuário) */
+const LSKEY="diarioNutri.v1", CFGKEY="diarioNutri.cfg";
+const lsGet=(k,f)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):f}catch(e){return f}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}};
+let DATA=lsGet(LSKEY,null)||{profile:null,meals:{},body:{},kv:{}};
+const subs=new Set();
+function persist(){lsSet(LSKEY,DATA);subs.forEach(f=>f());}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const withId=o=>Object.entries(o).map(([id,v])=>({id,...v}));
+function watch(fn){fn();subs.add(fn);return()=>subs.delete(fn);}
+const cfg=()=>lsGet(CFGKEY,{key:"",model:"claude-sonnet-5-5"});
+
+const STORE={
+  onProfile:cb=>watch(()=>cb(DATA.profile)),
+  setProfile:async p=>{DATA.profile=p;persist();},
+  onMeals:(from,to,cb)=>watch(()=>cb(withId(DATA.meals).filter(m=>m.date>=from&&m.date<=to))),
+  addMeal:async d=>{DATA.meals[uid()]=d;persist();},
+  delMeal:async id=>{delete DATA.meals[id];persist();},
+  onBody:cb=>watch(()=>cb(withId(DATA.body))),
+  addBody:async d=>{DATA.body[uid()]=d;persist();},
+  delBody:async id=>{delete DATA.body[id];persist();},
+  getKV:async k=>DATA.kv[k]||null,
+  setKV:async(k,v)=>{DATA.kv[k]=v;persist();},
+};
+
+async function imageBlock(file){
+  const bmp=await createImageBitmap(file);
+  const s=Math.min(1,1568/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas");c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);
+  c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+  return {type:"image",source:{type:"base64",media_type:"image/jpeg",data:c.toDataURL("image/jpeg",0.85).split(",")[1]}};
+}
+async function callClaude(content,{signal,onText,max=8000}={}){
+  const {key,model}=cfg();
+  if(!key) throw {code:"no_key"};
+  let res;
+  try{
+    res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal,headers:{
+      "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model,max_tokens:max,stream:true,messages:[{role:"user",content}]})});
+  }catch(e){throw {code:e?.name==="AbortError"?"cancelled":"network"};}
+  if(!res.ok){
+    let m="";try{m=(await res.json()).error?.message||""}catch(e){}
+    const code=res.status===401||res.status===403?"bad_key":res.status===429||res.status===529?"rate_limited":/credit/i.test(m)?"no_credit":"upstream_error";
+    throw {code,message:m};
+  }
+  const reader=res.body.getReader(),dec=new TextDecoder();let buf="",text="";
+  try{
+    for(;;){
+      const {done,value}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      let i;
+      while((i=buf.indexOf("\n\n"))>=0){
+        const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+        const line=chunk.split("\n").find(l=>l.startsWith("data:"));if(!line)continue;
+        let ev;try{ev=JSON.parse(line.slice(5))}catch(e){continue}
+        if(ev.type==="content_block_delta"&&ev.delta?.type==="text_delta"){text+=ev.delta.text;onText?.(text);}
+        else if(ev.type==="error") throw {code:"upstream_error",message:ev.error?.message,text};
+      }
+    }
+  }catch(e){if(e?.code)throw e;throw {code:e?.name==="AbortError"?"cancelled":"network",text};}
+  if(!text.trim()) throw {code:"empty"};
+  return text;
+}
+function parseJSON(t){
+  try{return JSON.parse(t)}catch(e){}
+  const f=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(f){try{return JSON.parse(f[1])}catch(e){}}
+  const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch(e){}}
+  throw {code:"invalid_json",text:t};
+}
+const API_AI={
+  images:true,
+  json:async(p,o={})=>{
+    const content=[];
+    if(o.image){try{content.push(await imageBlock(o.image))}catch(e){throw {code:"image_rejected"}}}
+    content.push({type:"text",text:p+"\nResponda apenas com o JSON, sem texto antes ou depois."});
+    return parseJSON(await callClaude(content,{signal:o.signal,max:6000}));
+  },
+  text:(p,o={})=>callClaude([{type:"text",text:p}],{signal:o.signal,onText:o.onText,max:o.long?16000:8000}),
+};
+
+async function connect(){
+  const ok=lsSet("diarioNutri.test",1);
+  setupSettings();
+  return {S:STORE,AI:API_AI,status:ok?"Dados salvos neste aparelho":"Atenção: este navegador não está salvando os dados (modo anônimo?)"};
+}
+
+/* ---------- configurações ---------- */
+function setupSettings(){
+  const c=cfg();
+  $("#apiKey").value=c.key||"";$("#apiModel").value=c.model||"claude-sonnet-5-5";
+  $("#keyBanner").hidden=!!c.key;
+  $("#cfgSave").onclick=()=>{
+    const key=$("#apiKey").value.trim();
+    lsSet(CFGKEY,{key,model:$("#apiModel").value});
+    $("#keyBanner").hidden=!!key;$("#cfgMsg").textContent=key?"Salvo neste aparelho.":"Chave apagada.";
+  };
+  $("#cfgTest").onclick=async()=>{
+    $("#cfgSave").click();$("#cfgMsg").textContent="Testando...";
+    try{await callClaude([{type:"text",text:"Responda só: ok"}],{max:1000});$("#cfgMsg").textContent="Funcionou. A chave está ok.";}
+    catch(e){$("#cfgMsg").textContent=errMsg(e)+(e?.message?" ("+e.message+")":"");}
+  };
+  $("#exportBtn").onclick=()=>{
+    const blob=new Blob([JSON.stringify(DATA,null,1)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="diario-nutri-backup-"+today()+".json";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+    lsSet(CFGKEY,{...cfg(),lastBackup:Date.now()});backupInfo();
+  };
+  backupInfo();
+  $("#importIn").onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{const d=JSON.parse(await f.text());if(!d.meals||!d.body)throw 0;DATA={profile:d.profile||null,meals:d.meals,body:d.body,kv:d.kv||{}};persist();$("#cfgMsg").textContent="Backup restaurado.";fillProfile();loadDiet();loadSaved();}
+    catch(err){$("#cfgMsg").textContent="Arquivo de backup inválido.";}
+    e.target.value="";
+  };
+}
+
+function backupInfo(){
+  const lb=cfg().lastBackup, has=Object.keys(DATA.meals).length+Object.keys(DATA.body).length>0;
+  const dias=lb?Math.floor((Date.now()-lb)/864e5):null;
+  $("#backupInfo").textContent=lb?(dias===0?"Último backup: hoje.":"Último backup: há "+dias+" dia"+(dias>1?"s":"")+"."):"Nenhum backup feito ainda.";
+  $("#backupBanner").hidden=!(has&&(dias===null||dias>=14)&&Object.keys(DATA.meals).length>=10);
+}
+
+
+const $=s=>document.querySelector(s);
+const MEALS=[["cafe","Café da manhã"],["lanche1","Lanche manhã"],["almoco","Almoço"],["lanche2","Lanche tarde"],["jantar","Jantar"],["ceia","Ceia"],["extra","Beliscos"]];
+const MEAL_NAME=Object.fromEntries(MEALS);
+const DOW=["dom","seg","ter","qua","qui","sex","sáb"];
+const MON=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const ds=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ds(d)};
+const today=()=>ds(new Date());
+const r0=n=>Math.round(Number(n)||0);
+const r1=n=>Math.round((Number(n)||0)*10)/10;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtD=s=>{const d=parse(s);return d.getDate()+" "+MON[d.getMonth()]+" "+String(d.getFullYear()).slice(2)};
+
+let S=null,AI=null;
+let sel=today(), profile=null, meals=[], body=[], unsub=null, pending=null, photo=null, ctl=null, metric="peso";
+let selMeal=(()=>{const h=new Date().getHours();return h<10?"cafe":h<12?"lanche1":h<15?"almoco":h<18?"lanche2":h<21?"jantar":"ceia"})();
+
+const ERR={cancelled:"Cancelado.",not_granted:"Você não liberou o uso do Claude para este app.",rate_limited:"Muitas análises seguidas. Espere um pouco e tente de novo.",image_rejected:"Essa foto não deu para ler. Tente outra.",invalid_json:"A resposta veio estranha. Tente de novo.",empty:"Não consegui identificar os alimentos. Descreva com mais detalhes.",no_key:"Coloque sua chave API em Configurações, no fim da página.",bad_key:"Chave API inválida. Confira em Configurações.",no_credit:"Sua conta da API está sem crédito.",network:"Sem internet ou a API não respondeu."};
+const errMsg=e=>ERR[e?.code]||"Não consegui agora. Tente de novo.";
+
+/* ---------- metas ---------- */
+const lastBody=()=>body.length?body[body.length-1]:null;
+function targets(p){
+  if(!p||!p.peso||!p.altura||!p.idade) return null;
+  const b=lastBody();
+  let lbm=null;
+  if(b?.magra) lbm=b.magra; else if(b?.gordura) lbm=p.peso*(1-b.gordura/100);
+  const bmr=lbm?370+21.6*lbm:10*p.peso+6.25*p.altura-5*p.idade+(p.sexo==="f"?-161:5);
+  const tdee=bmr*(Number(p.ativ)||1.55);
+  const adj=p.obj==="ganhar"?350:p.obj==="perder"?-450:0;
+  const kcal=p.kcal?Number(p.kcal):Math.round((tdee+adj)/10)*10;
+  const prot=Math.round(p.peso*(p.obj==="manter"?1.6:2.0));
+  const gord=Math.round(p.peso*0.9);
+  const carb=Math.max(0,Math.round((kcal-prot*4-gord*9)/4));
+  return {kcal,prot,carb,gord,tdee:Math.round(tdee),lbm:!!lbm};
+}
+const sumItems=items=>items.reduce((a,i)=>({kcal:a.kcal+r0(i.kcal),prot:a.prot+r0(i.prot),carb:a.carb+r0(i.carb),gord:a.gord+r0(i.gord)}),{kcal:0,prot:0,carb:0,gord:0});
+const dayMeals=d=>meals.filter(m=>m.date===d).sort((a,b)=>a.ts-b.ts);
+const dayTot=d=>dayMeals(d).reduce((a,m)=>{const t=m.tot||sumItems(m.items||[]);return{kcal:a.kcal+t.kcal,prot:a.prot+t.prot,carb:a.carb+t.carb,gord:a.gord+t.gord}},{kcal:0,prot:0,carb:0,gord:0});
+
+/* ---------- render ---------- */
+function dateLabel(s){
+  if(s===today()) return "Hoje";
+  if(s===addDays(today(),-1)) return "Ontem";
+  const d=parse(s);return DOW[d.getDay()]+", "+d.getDate()+" "+MON[d.getMonth()];
+}
+const pct=(a,b)=>b?Math.min(100,a/b*100):0;
+function render(){
+  const T=targets(profile), t=dayTot(sel);
+  $("#dateLabel").textContent=dateLabel(sel);
+  $("#next").disabled=sel>=today();
+  $("#mealsTitle").textContent=sel===today()?"Refeições de hoje":"Refeições de "+dateLabel(sel).toLowerCase();
+  $("#setupBanner").hidden=!!T||!S;
+  $("#kcalNow").textContent=t.kcal;
+  $("#kcalGoal").textContent=T?T.kcal:"…";
+  $("#kcalBar").style.width=pct(t.kcal,T?.kcal)+"%";
+  [["p","prot"],["c","carb"],["g","gord"]].forEach(([k,f])=>{
+    $("#"+k+"Txt").textContent=t[f]+(T?" / "+T[f]:"")+" g";
+    $("#"+k+"Bar").style.width=pct(t[f],T?.[f])+"%";
+  });
+  const chips=[];
+  if(T&&dayMeals(sel).length){
+    const kr=t.kcal/T.kcal, pr=t.prot/T.prot, judge=sel!==today()||new Date().getHours()>=20;
+    if(kr>1.15) chips.push(["bad","Passou "+(t.kcal-T.kcal)+" kcal da meta"]);
+    else if(kr>=0.9) chips.push(["ok","Calorias na meta"]);
+    else chips.push([judge?"warn":"mut","Faltam "+(T.kcal-t.kcal)+" kcal"]);
+    if(pr>=0.9) chips.push(["ok","Proteína ok"]);
+    else chips.push([judge?"bad":"warn","Faltam "+(T.prot-t.prot)+" g de proteína"]);
+    if(t.gord>T.gord*1.3) chips.push(["warn","Gordura alta"]);
+  }
+  $("#statusChips").innerHTML=chips.map(([c,l])=>`<span class="chip ${c}">${esc(l)}</span>`).join("");
+  renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();
+}
+function renderWeek(T){
+  const days=[...Array(7)].map((_,i)=>addDays(sel,i-6));
+  const vals=days.map(d=>dayTot(d).kcal);
+  const max=Math.max(T?.kcal*1.25||0,...vals,1);
+  let html=days.map((d,i)=>{
+    const v=vals[i], h=Math.max(2,v/max*84);
+    const cls=!v?"":T&&v>=T.kcal*0.9&&v<=T.kcal*1.15?"hit":T&&v<T.kcal*0.9?"low":"";
+    return `<div class="col" title="${esc(dateLabel(d))}: ${v} kcal"><div class="bar ${cls} ${d===sel?"sel":""}" style="height:${h}px"></div><div class="d">${DOW[parse(d).getDay()]}</div></div>`;
+  }).join("");
+  if(T) html+=`<div class="goal-line" style="bottom:${T.kcal/max*84+18}px"><span class="num">${T.kcal}</span></div>`;
+  $("#week").innerHTML=html;
+}
+function renderMealPick(){$("#mealPick").innerHTML=MEALS.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${k===selMeal}">${l}</button>`).join("");}
+function renderMeals(){
+  const list=dayMeals(sel);
+  if(!list.length){$("#mealsList").innerHTML=`<p class="empty">${S?"Nada lançado nesse dia. Use o campo acima para lançar.":"Sem onde salvar ainda. Veja o aviso no topo."}</p>`;return;}
+  $("#mealsList").innerHTML=list.map(m=>{
+    const t=m.tot||sumItems(m.items||[]);
+    const hr=new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    return `<div class="meal">
+      <div class="meal-h"><b>${esc(MEAL_NAME[m.meal]||"Refeição")} <span class="stamp">${hr}</span></b>
+        <span class="num" style="font-size:.85rem">${t.kcal} kcal · P ${t.prot} · C ${t.carb} · G ${t.gord}</span></div>
+      ${m.text?`<p class="txt">${esc(m.text)}${m.foto?" (com foto)":""}</p>`:""}
+      <ul class="items">${(m.items||[]).map(i=>`<li>${esc(i.nome)}${i.porcao?" ("+esc(i.porcao)+")":""}: <span class="num">${r0(i.kcal)} kcal</span></li>`).join("")}</ul>
+      ${m.comentario?`<p class="note ${esc(m.sinal||"")}">${esc(m.comentario)}</p>`:""}
+      <div><button class="del" data-del="${esc(m.id)}">Apagar</button></div>
+    </div>`;}).join("");
+}
+function renderPreview(){
+  const box=$("#preview");
+  if(!pending){box.hidden=true;box.innerHTML="";return;}
+  box.hidden=false;
+  if(pending.loading){box.innerHTML=`<p class="hint" style="margin:0">${esc(pending.loading)}</p>`;return;}
+  const t=sumItems(pending.items);
+  box.innerHTML=`<div class="eyebrow">Confira antes de salvar · ${esc(MEAL_NAME[selMeal])}</div>
+    <div class="tbl"><table><thead><tr><th>Item</th><th>kcal</th><th>P</th><th>C</th><th>G</th><th></th></tr></thead><tbody>
+    ${pending.items.map((i,n)=>`<tr><td>${esc(i.nome)}${i.porcao?`<br><span class="stamp">${esc(i.porcao)}</span>`:""}</td><td class="num">${r0(i.kcal)}</td><td class="num">${r0(i.prot)}</td><td class="num">${r0(i.carb)}</td><td class="num">${r0(i.gord)}</td><td><button class="x" data-rm="${n}" aria-label="Remover ${esc(i.nome)}">×</button></td></tr>`).join("")}
+    <tr><td><b>Total</b></td><td class="num"><b>${t.kcal}</b></td><td class="num">${t.prot}</td><td class="num">${t.carb}</td><td class="num">${t.gord}</td><td></td></tr>
+    </tbody></table></div>
+    ${pending.comentario?`<p class="note ${esc(pending.sinal||"")}" style="background:var(--surface)">${esc(pending.comentario)}</p>`:""}
+    <div class="row"><button class="primary" id="saveMeal" ${pending.items.length&&S?"":"disabled"}>Salvar refeição</button><button id="discard">Descartar</button><span class="hint" id="saveMsg"></span></div>`;
+}
+function md(t){
+  const lines=esc(t).split("\n");let out="",inList=false;
+  for(let l of lines){
+    l=l.replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
+    if(/^\s*[-•*]\s+/.test(l)){if(!inList){out+="<ul>";inList=true}out+="<li>"+l.replace(/^\s*[-•*]\s+/,"")+"</li>";continue}
+    if(inList){out+="</ul>";inList=false}
+    if(/^#{1,4}\s/.test(l)) out+="<h3>"+l.replace(/^#{1,4}\s/,"")+"</h3>";
+    else if(l.trim()) out+="<p>"+l+"</p>";
+  }
+  return out+(inList?"</ul>":"");
+}
+
+/* ---------- corpo ---------- */
+const METRICS=[["peso","Peso","kg"],["musculo","Massa muscular","kg"],["gordura","Gordura","%"],["mgorda","Massa gorda","kg"]];
+function renderBody(){
+  const b=lastBody(), prev=body.length>1?body[body.length-2]:null;
+  $("#bodyLast").textContent=b?"Última: "+fmtD(b.date)+(b.fonte?" · "+b.fonte:""):"";
+  const stat=(k,l,u,goodUp)=>{
+    if(b?.[k]==null) return `<div class="stat"><div class="l">${l}</div><div class="v">…</div><div class="dlt flat">sem dado</div></div>`;
+    let d="";const p=prev?.[k];
+    if(p!=null){const x=r1(b[k]-p);const good=goodUp==null?"flat":(x===0?"flat":(x>0)===goodUp?"up":"down");d=`<div class="dlt ${good}">${x>0?"+":""}${x} ${u} vs anterior</div>`;}
+    else d=`<div class="dlt flat">primeira medição</div>`;
+    return `<div class="stat"><div class="l">${l}</div><div class="v">${r1(b[k])} ${u}</div>${d}</div>`;
+  };
+  const gUp=profile?.obj!=="perder";
+  $("#bodyStats").innerHTML=stat("peso","Peso","kg",gUp)+stat("musculo","Músculo","kg",true)+stat("gordura","Gordura","%",false);
+  const avail=METRICS.filter(([k])=>body.some(x=>x[k]!=null));
+  if(!avail.find(m=>m[0]===metric)) metric=avail[0]?.[0]||"peso";
+  $("#bodyMetric").innerHTML=avail.length>1?avail.map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${k===metric}">${l}</button>`).join(""):"";
+  renderChart();
+  $("#bodyList").innerHTML=body.slice().reverse().map(x=>{
+    const parts=[x.peso!=null&&x.peso+" kg",x.gordura!=null&&x.gordura+"% gord.",x.musculo!=null&&x.musculo+" kg músc.",x.visceral!=null&&"visceral "+x.visceral].filter(Boolean).join(" · ");
+    return `<div class="it"><span><b>${fmtD(x.date)}</b> <span class="stamp">${esc(x.fonte||"")}</span><br><span class="num">${esc(parts)}</span>${x.obs?`<br><span class="stamp">${esc(x.obs)}</span>`:""}</span><button class="del" data-bdel="${esc(x.id)}">Apagar</button></div>`;
+  }).join("")||`<p class="empty">Nenhuma medição ainda. Lance seu peso de hoje em "Nova medição" ou me mande o resultado da bioimpedância que eu salvo aqui.</p>`;
+}
+function renderChart(){
+  const pts=body.filter(x=>x[metric]!=null).map(x=>({t:parse(x.date).getTime(),v:Number(x[metric]),d:x.date}));
+  const box=$("#bodyChart");
+  if(pts.length<2){box.innerHTML=pts.length?`<p class="hint">O gráfico aparece a partir da segunda medição.</p>`:"";return;}
+  const W=600,H=210,L=58,R=14,Tp=16,B=34;
+  let mn=Math.min(...pts.map(p=>p.v)),mx=Math.max(...pts.map(p=>p.v));
+  const pad=Math.max((mx-mn)*0.25,0.5);mn-=pad;mx+=pad;
+  const t0=pts[0].t,t1=pts[pts.length-1].t||t0+1;
+  const X=t=>L+(t1===t0?0.5:(t-t0)/(t1-t0))*(W-L-R), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
+  const unit=METRICS.find(m=>m[0]===metric)[2];
+  let g="";
+  for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3;const y=Y(v);g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text class="tx" x="${L-6}" y="${y+4}" text-anchor="end">${r1(v)}</text>`;}
+  const line=pts.map(p=>`${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" ");
+  const area=`${X(pts[0].t)},${H-B} ${line} ${X(pts[pts.length-1].t)},${H-B}`;
+  const f=pts[0],l=pts[pts.length-1];
+  box.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Evolução de ${metric}">${g}
+    <polygon class="ar" points="${area}"/><polyline class="ln" points="${line}"/>
+    ${pts.map((p,i)=>`<circle class="pt ${i===pts.length-1?"last":""}" cx="${X(p.t)}" cy="${Y(p.v)}" r="${i===pts.length-1?5:3.5}"><title>${fmtD(p.d)}: ${p.v} ${unit}</title></circle>`).join("")}
+    <text class="tx" x="${L}" y="${H-6}">${fmtD(f.d)}</text><text class="tx" x="${W-R}" y="${H-6}" text-anchor="end">${fmtD(l.d)} · ${r1(l.v)} ${unit}</text></svg>`;
+}
+$("#bodyMetric").addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(!b)return;metric=b.dataset.m;renderBody();});
+$("#bData").value=today();
+$("#bodyForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!S){$("#bMsg").textContent="Sem onde salvar ainda.";return;}
+  const n=id=>{const v=$(id).value;return v===""?null:Number(v)};
+  const doc={date:$("#bData").value||today(),peso:n("#bPeso"),gordura:n("#bGord"),musculo:n("#bMusc"),magra:n("#bMagra"),mgorda:n("#bMGorda"),agua:n("#bAgua"),visceral:n("#bVisc"),tmb:n("#bTmb"),cintura:n("#bCint"),braco:n("#bBraco"),fonte:$("#bFonte").value,obs:$("#bObs").value.trim(),ts:Date.now()};
+  if(doc.peso==null){$("#bMsg").textContent="Coloque o peso.";$("#bPeso").focus();return;}
+  if(doc.mgorda==null&&doc.gordura!=null) doc.mgorda=r1(doc.peso*doc.gordura/100);
+  Object.keys(doc).forEach(k=>doc[k]===null&&delete doc[k]);
+  $("#bSave").disabled=true;$("#bMsg").textContent="Salvando...";
+  try{
+    await S.addBody(doc);
+    const newest=!body.some(x=>x.date>doc.date);
+    if(newest&&profile&&profile.peso!==doc.peso){await S.setProfile({...profile,peso:doc.peso,updated:Date.now()});}
+    $("#bodyForm").reset();$("#bData").value=today();$("#bMsg").textContent="Medição salva.";
+  }catch(err){$("#bMsg").textContent="Não salvou. Tente de novo.";}
+  $("#bSave").disabled=false;
+});
+$("#bodyList").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-bdel]");if(!b)return;
+  if(!b.classList.contains("arm")){b.classList.add("arm");b.textContent="Confirmar apagar";setTimeout(()=>{b.classList.remove("arm");b.textContent="Apagar"},4000);return;}
+  b.disabled=true;try{await S.delBody(b.dataset.bdel);}catch(err){b.disabled=false;b.textContent="Não apagou";}
+});
+
+/* ---------- perfil ---------- */
+function fillProfile(){
+  const p=profile||{};
+  $("#pfSexo").value=p.sexo||"m";$("#pfIdade").value=p.idade||"";$("#pfAltura").value=p.altura||"";$("#pfPeso").value=p.peso||"";
+  $("#pfAtiv").value=p.ativ||"1.55";$("#pfObj").value=p.obj||"ganhar";$("#pfKcal").value=p.kcal||"";$("#pfRef").value=p.refeicoes||"";$("#pfObs").value=p.obs||"";
+  if(document.activeElement!==$("#dietPref")) $("#dietPref").value=p.dietaPref||"";
+  showTargets();
+}
+function formProfile(){
+  const n=id=>{const v=$(id).value;return v===""?null:Number(v)};
+  return {...(profile||{}),sexo:$("#pfSexo").value,idade:n("#pfIdade"),altura:n("#pfAltura"),peso:n("#pfPeso"),ativ:$("#pfAtiv").value,obj:$("#pfObj").value,kcal:n("#pfKcal"),refeicoes:n("#pfRef"),obs:$("#pfObs").value.trim()};
+}
+function showTargets(){
+  const T=targets(formProfile());
+  $("#targets").innerHTML=T?[["kcal","kcal/dia"],["prot","proteína g"],["carb","carbo g"],["gord","gordura g"]].map(([k,l])=>`<div><b>${T[k]}</b><span>${l}</span></div>`).join(""):`<div style="grid-column:1/-1"><span>Preencha idade, altura e peso para ver suas metas.</span></div>`;
+  $("#targetsNote").textContent=T?(T.lbm?"Metas calculadas com sua massa magra da última medição.":"Metas estimadas por peso, altura e idade. Com uma bioimpedância fica mais preciso."):"";
+}
+$("#profileForm").addEventListener("input",showTargets);
+$("#profileForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!S){$("#pfMsg").textContent="Sem onde salvar ainda.";return;}
+  const p=formProfile();p.updated=Date.now();
+  $("#pfSave").disabled=true;$("#pfMsg").textContent="Salvando...";
+  try{await S.setProfile(p);$("#pfMsg").textContent="Perfil salvo.";}catch(err){$("#pfMsg").textContent="Não salvou. Tente de novo.";}
+  $("#pfSave").disabled=false;
+});
+
+/* ---------- contexto para a IA ---------- */
+function profileText(){
+  const p=profile||{},T=targets(p),b=lastBody();
+  const obj={ganhar:"ganhar massa muscular",manter:"manter o peso",perder:"emagrecer"}[p.obj||"ganhar"];
+  let s=`Paciente: ${p.sexo==="f"?"mulher":"homem"}, ${p.idade||"?"} anos, ${p.altura||"?"} cm, ${p.peso||"?"} kg. Objetivo: ${obj}.`+
+    (T?` Metas diárias: ${T.kcal} kcal, ${T.prot} g proteína, ${T.carb} g carbo, ${T.gord} g gordura.`:" Metas ainda não definidas.")+
+    (p.refeicoes?` Costuma fazer ${p.refeicoes} refeições por dia.`:"")+(p.obs?` Observações: ${p.obs}.`:"");
+  if(b){
+    const f=[["peso","peso","kg"],["gordura","gordura","%"],["musculo","massa muscular","kg"],["magra","massa magra","kg"],["mgorda","massa gorda","kg"],["agua","água","%"],["visceral","gordura visceral",""],["tmb","taxa metabólica","kcal"],["cintura","cintura","cm"],["braco","braço","cm"]];
+    s+=`\nÚltima medição (${b.date}, ${b.fonte||""}): `+f.filter(([k])=>b[k]!=null).map(([k,l,u])=>`${l} ${b[k]}${u?" "+u:""}`).join(", ")+".";
+    if(body.length>1){const a=body[0];s+=` Primeira medição (${a.date}): peso ${a.peso} kg`+(a.musculo!=null?`, massa muscular ${a.musculo} kg`:"")+(a.gordura!=null?`, gordura ${a.gordura}%`:"")+".";}
+  }
+  return s;
+}
+function dayText(d){
+  const list=dayMeals(d);
+  if(!list.length) return `${d}: nada lançado.`;
+  const t=dayTot(d);
+  return `${d} (total ${t.kcal} kcal, P ${t.prot} g, C ${t.carb} g, G ${t.gord} g):\n`+list.map(m=>{
+    const hr=new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    return `- ${MEAL_NAME[m.meal]} ${hr}: `+(m.items||[]).map(i=>`${i.nome}${i.porcao?" "+i.porcao:""} (${r0(i.kcal)} kcal, P${r0(i.prot)})`).join("; ");
+  }).join("\n");
+}
+const STYLE="Escreva em português do Brasil, com palavras simples e frases curtas. Não use travessão (o caractere —) em nenhum lugar. Não use tabelas.";
+
+/* ---------- lançar ---------- */
+$("#mealPick").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;selMeal=b.dataset.k;renderMealPick();renderPreview();});
+$("#photoIn").addEventListener("change",e=>{
+  photo=e.target.files[0]||null;
+  if(photo){$("#photoPrev").src=URL.createObjectURL(photo);$("#photoPrev").hidden=false;$("#photoClear").hidden=false;}
+});
+$("#photoClear").addEventListener("click",()=>{photo=null;$("#photoIn").value="";$("#photoPrev").hidden=true;$("#photoClear").hidden=true;});
+$("#manualToggle").addEventListener("click",()=>{$("#manualBox").hidden=!$("#manualBox").hidden;});
+$("#mAdd").addEventListener("click",()=>{
+  const nome=$("#mNome").value.trim();if(!nome){$("#mNome").focus();return;}
+  if(!pending||pending.loading) pending={items:[],comentario:"",sinal:""};
+  pending.items.push({nome,porcao:"",kcal:r0($("#mK").value),prot:r0($("#mP").value),carb:r0($("#mC").value),gord:r0($("#mG").value)});
+  ["#mNome","#mK","#mP","#mC","#mG"].forEach(id=>$(id).value="");
+  renderPreview();
+});
+$("#analyze").addEventListener("click",async()=>{
+  const text=$("#mealText").value.trim();
+  if(!text&&!photo){$("#mealText").focus();$("#aiHint").textContent="Escreva o que comeu ou escolha uma foto.";return;}
+  if(!AI){$("#aiHint").textContent="Análise automática indisponível aqui. Use Lançar manual.";return;}
+  ctl=new AbortController();
+  $("#analyze").disabled=true;$("#stopBtn").hidden=false;
+  pending={loading:"Analisando a refeição... (pode levar uns segundos)"};renderPreview();
+  const soFar=dayTot(sel);
+  const prompt=`Você é uma nutricionista brasileira experiente. ${profileText()}
+Até agora no dia ${sel} ele já comeu ${soFar.kcal} kcal e ${soFar.prot} g de proteína.
+Refeição: ${MEAL_NAME[selMeal]}.
+Descrição do paciente: "${text||"(sem texto, veja a foto)"}"${photo?"\nHá uma foto do prato anexada: use para estimar tipos de alimento e porções.":""}
+Separe em itens, estime a porção em medida caseira e gramas quando der, e calcule kcal, proteína, carboidrato e gordura de cada item usando a tabela TACO e rótulos comuns do Brasil. Se a quantidade não foi dita, use uma porção típica de adulto e deixe isso claro na porção.
+Depois escreva um comentário curto (1 ou 2 frases) sobre essa refeição pensando no objetivo dele, e dê um sinal: "bom", "atencao" ou "alerta".
+${STYLE}
+Responda somente com JSON neste formato:
+{"itens":[{"nome":"Pão francês","porcao":"2 un (100 g)","kcal":300,"prot":8,"carb":58,"gord":3}],"comentario":"...","sinal":"bom"}`;
+  try{
+    const r=await AI.json(prompt,{signal:ctl.signal,image:photo});
+    const items=(Array.isArray(r?.itens)?r.itens:[]).map(i=>({nome:String(i.nome||"Item"),porcao:String(i.porcao||""),kcal:r0(i.kcal),prot:r0(i.prot),carb:r0(i.carb),gord:r0(i.gord)}));
+    if(!items.length) throw {code:"empty"};
+    pending={items,comentario:String(r.comentario||""),sinal:["bom","atencao","alerta"].includes(r.sinal)?r.sinal:"",text,foto:!!photo};
+  }catch(e){pending=null;$("#aiHint").textContent=errMsg(e);}
+  $("#analyze").disabled=false;$("#stopBtn").hidden=true;renderPreview();
+});
+$("#stopBtn").addEventListener("click",()=>ctl?.abort());
+$("#preview").addEventListener("click",async e=>{
+  const rm=e.target.closest("[data-rm]");
+  if(rm){pending.items.splice(Number(rm.dataset.rm),1);renderPreview();return;}
+  if(e.target.id==="discard"){pending=null;renderPreview();return;}
+  if(e.target.id==="saveMeal"){
+    e.target.disabled=true;$("#saveMsg").textContent="Salvando...";
+    const doc={date:sel,ts:sel===today()?Date.now():parse(sel).getTime()+12*3600e3,meal:selMeal,text:pending.text??$("#mealText").value.trim(),items:pending.items,tot:sumItems(pending.items),comentario:pending.comentario||"",sinal:pending.sinal||"",foto:!!pending.foto};
+    try{
+      await S.addMeal(doc);
+      pending=null;$("#mealText").value="";$("#photoClear").click();$("#aiHint").textContent="Refeição salva. Pode lançar a próxima.";
+      renderPreview();
+    }catch(err){$("#saveMsg").textContent=err?.code==="quota_exceeded"?"Espaço cheio. Apague registros antigos.":"Não salvou. Tente de novo.";e.target.disabled=false;}
+  }
+});
+$("#mealsList").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-del]");if(!b)return;
+  if(!b.classList.contains("arm")){b.classList.add("arm");b.textContent="Confirmar apagar";setTimeout(()=>{b.classList.remove("arm");b.textContent="Apagar"},4000);return;}
+  b.disabled=true;try{await S.delMeal(b.dataset.del);}catch(err){b.disabled=false;b.textContent="Não apagou";}
+});
+
+/* ---------- nutri ---------- */
+function stampTxt(kind,ts){return kind+" · feita "+new Date(ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
+async function loadSaved(){
+  $("#nutriOut").innerHTML=`<p class="empty">Quando pedir uma análise, ela aparece aqui e fica salva para você rever.</p>`;$("#nutriStamp").textContent="";
+  if(!S) return;
+  try{
+    const [d,w]=await Promise.all([S.getKV("dia-"+sel),S.getKV("semana-"+sel)]);
+    const pick=[d,w].filter(Boolean).sort((a,b)=>b.ts-a.ts)[0];
+    if(pick){$("#nutriStamp").textContent=stampTxt(pick.kind==="semana"?"Análise da semana":"Análise do dia",pick.ts);$("#nutriOut").innerHTML=md(pick.text);}
+  }catch(e){}
+}
+async function loadDiet(){
+  if(!S) return;
+  try{const d=await S.getKV("dieta");if(d){$("#dietStamp").textContent=stampTxt("Dieta",d.ts);$("#dietOut").innerHTML=md(d.text);$("#dietBtn").textContent="Gerar nova dieta";}}catch(e){}
+}
+async function runNutri(kind){
+  if(!AI){$("#nutriOut").innerHTML=`<p class="empty">Análise indisponível aqui.</p>`;return;}
+  const days=kind==="semana"?[...Array(7)].map((_,i)=>addDays(sel,i-6)):[sel];
+  if(!days.some(d=>dayMeals(d).length)){$("#nutriOut").innerHTML=`<p class="empty">Não tem refeição lançada ${kind==="semana"?"nessa semana":"nesse dia"} ainda.</p>`;return;}
+  const btns=[$("#dayBtn"),$("#weekBtn")];btns.forEach(b=>b.disabled=true);
+  $("#nutriStamp").textContent="";$("#nutriOut").innerHTML=`<p class="empty">Pensando...</p>`;
+  const isToday=sel===today();
+  const prompt=`Você é a nutricionista do paciente e está acompanhando o diário alimentar dele. ${profileText()}
+${kind==="semana"?"Analise a SEMANA abaixo (7 dias).":"Analise o DIA abaixo."+(isToday?` O dia ainda está em andamento, agora são ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}.`:"")}
+
+${days.map(dayText).join("\n\n")}
+
+Monte a resposta assim, em markdown simples (títulos com ###, listas com -):
+### Resumo
+2 ou 3 frases dizendo como ${kind==="semana"?"foi a semana":"está o dia"} em relação às metas.
+### Sinais
+Lista curta com o que está bom e o que preocupa (proteína, calorias, fritura, açúcar, fibras, verduras, horários, pular refeição, álcool etc.). Seja direta.
+### ${kind==="semana"?"Ajustes para a próxima semana":(isToday?"O que comer no resto do dia":"O que ajustar amanhã")}
+Sugestões práticas com alimentos comuns e baratos do Brasil, com quantidades${kind==="semana"?"":", fechando a meta de proteína e calorias"}.
+${STYLE} Não repita os números de cada refeição, foque no que importa.`;
+  try{
+    const text=await AI.text(prompt,{onText:t=>{$("#nutriOut").innerHTML=md(t);}});
+    const a={kind,text,ts:Date.now(),date:sel};
+    $("#nutriStamp").textContent=stampTxt(kind==="semana"?"Análise da semana":"Análise do dia",a.ts);$("#nutriOut").innerHTML=md(text);
+    S?.setKV(`${kind}-${sel}`,a).catch(()=>{});
+  }catch(e){
+    $("#nutriOut").innerHTML=(e?.text?md(e.text)+`<p class="empty">(interrompida)</p>`:"")+`<p class="empty">${esc(errMsg(e))}</p>`;
+  }
+  btns.forEach(b=>b.disabled=false);
+}
+$("#dayBtn").addEventListener("click",()=>runNutri("dia"));
+$("#weekBtn").addEventListener("click",()=>runNutri("semana"));
+
+/* ---------- dieta ---------- */
+function eatingHabits(){
+  const counts={};
+  meals.forEach(m=>(m.items||[]).forEach(i=>{const k=String(i.nome).toLowerCase();counts[k]=(counts[k]||0)+1}));
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,25).map(([k])=>k).join(", ");
+}
+$("#dietBtn").addEventListener("click",async()=>{
+  if(!AI){$("#dietMsg").textContent="Indisponível aqui.";return;}
+  const T=targets(profile);
+  if(!T){$("#dietMsg").textContent="Preencha e salve seu perfil primeiro.";$("#profileBox").open=true;return;}
+  const pref=$("#dietPref").value.trim();
+  if(S&&profile&&pref!==(profile.dietaPref||"")) S.setProfile({...profile,dietaPref:pref}).catch(()=>{});
+  $("#dietBtn").disabled=true;$("#dietMsg").textContent="";$("#dietStamp").textContent="";$("#dietOut").innerHTML=`<p class="empty">Montando sua dieta... (pode levar até 1 minuto)</p>`;
+  const habits=eatingHabits();
+  const prompt=`Você é uma nutricionista esportiva brasileira. Monte um plano alimentar de 1 dia típico para o paciente, com opções de troca. ${profileText()}
+${pref?"Preferências e rotina: "+pref+".":""}
+${habits?"Alimentos que ele tem comido nos últimos dias: "+habits+".":""}
+Regras:
+- Bata as metas diárias (calorias e proteína principalmente), com tolerância de 5%.
+- Use alimentos comuns, baratos e fáceis de achar no Brasil, e comida de verdade. Aproveite o que ele já come quando fizer sentido.
+- Para cada refeição: horário sugerido, alimentos com quantidade em medida caseira e gramas, e o total da refeição em kcal e proteína.
+- Coloque pré e pós treino se ele informou horário de treino.
+- Depois das refeições, uma seção de trocas simples (ex.: trocar arroz por macarrão ou batata na mesma quantidade de carbo).
+- Termine com 3 a 5 dicas práticas para ganhar massa e uma lista de compras da semana resumida.
+Formato em markdown simples: títulos com ### para cada refeição e seção, itens com -. Mostre no começo uma linha com o total do dia (kcal, proteína, carbo, gordura).
+${STYLE}`;
+  try{
+    const text=await AI.text(prompt,{onText:t=>{$("#dietOut").innerHTML=md(t);},long:true});
+    const d={text,ts:Date.now()};
+    $("#dietStamp").textContent=stampTxt("Dieta",d.ts);$("#dietOut").innerHTML=md(text);$("#dietBtn").textContent="Gerar nova dieta";
+    S?.setKV("dieta",d).catch(()=>{});
+    $("#dietMsg").textContent="Dieta salva.";
+  }catch(e){
+    $("#dietOut").innerHTML=(e?.text?md(e.text)+`<p class="empty">(interrompida)</p>`:"");$("#dietMsg").textContent=errMsg(e);
+  }
+  $("#dietBtn").disabled=false;
+});
+
+/* ---------- navegação e boot ---------- */
+function subscribe(){
+  unsub?.();unsub=null;
+  if(!S) return;
+  unsub=S.onMeals(addDays(sel,-6),sel,list=>{meals=list;render();},()=>{$("#conn").textContent="Não consegui ler seus dados agora. Recarregue a página.";});
+  loadSaved();
+}
+$("#prev").addEventListener("click",()=>{sel=addDays(sel,-1);subscribe();render();});
+$("#next").addEventListener("click",()=>{if(sel<today()){sel=addDays(sel,1);subscribe();render();}});
+
+render();fillProfile();
+(async()=>{
+  const r=await connect();
+  S=r.S;AI=r.AI;
+  $("#conn").textContent=r.status;
+  if(!AI?.images){$("#photoWrap").hidden=true;}
+  if(!AI){$("#aiHint").textContent=r.aiOff||"Análise automática indisponível. Use Lançar manual.";}
+  else if(!AI.images) $("#aiHint").textContent="Escreva o que comeu. A nutri calcula tudo e comenta.";
+  if(!S){render();return;}
+  S.onProfile(p=>{
+    profile=p;
+    if(!document.activeElement?.closest("#profileForm")) fillProfile();
+    if(!profile) $("#profileBox").open=true;
+    render();
+  });
+  S.onBody(list=>{body=list.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));render();showTargets();});
+  subscribe();loadDiet();render();
+})();
+</script>
+
+</body>
+</html>
