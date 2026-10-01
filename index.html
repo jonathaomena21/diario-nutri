@@ -195,6 +195,7 @@ details .form{margin-top:12px}
       <img id="photoPrev" alt="Foto do prato" hidden>
       <button id="photoClear" hidden>Tirar foto</button>
     </div>
+    <div class="row"><label class="hint" for="mealTime">Horário que comeu</label><input id="mealTime" type="time" style="width:auto"><span class="hint">deixe vazio para usar a hora de agora</span></div>
     <p class="hint" id="aiHint">Escreva o que comeu e, se quiser, mande a foto do prato. A nutri calcula tudo e comenta.</p>
     <div class="row">
       <button class="primary" id="analyze">Analisar refeição</button>
@@ -308,6 +309,7 @@ details .form{margin-top:12px}
     <h2>Chave API e backup</h2>
     <div class="form">
       <label class="full">Chave API da Anthropic<input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-..."></label>
+      <label class="full">Workspace ID (só se a API pedir)<input id="apiWs" autocomplete="off" placeholder="deixe vazio se a chave já for de um workspace"></label>
       <label class="full">Modelo<select id="apiModel">
         <option value="claude-sonnet-5-5">Sonnet 5.5 (recomendado)</option>
         <option value="claude-haiku-4-5-20251001">Haiku 4.5 (mais barato e rápido)</option>
@@ -347,6 +349,7 @@ const STORE={
   onMeals:(from,to,cb)=>watch(()=>cb(withId(DATA.meals).filter(m=>m.date>=from&&m.date<=to))),
   addMeal:async d=>{DATA.meals[uid()]=d;persist();},
   delMeal:async id=>{delete DATA.meals[id];persist();},
+  updateMeal:async(id,patch)=>{if(DATA.meals[id]){DATA.meals[id]={...DATA.meals[id],...patch};persist();}},
   onBody:cb=>watch(()=>cb(withId(DATA.body))),
   addBody:async d=>{DATA.body[uid()]=d;persist();},
   delBody:async id=>{delete DATA.body[id];persist();},
@@ -362,17 +365,18 @@ async function imageBlock(file){
   return {type:"image",source:{type:"base64",media_type:"image/jpeg",data:c.toDataURL("image/jpeg",0.85).split(",")[1]}};
 }
 async function callClaude(content,{signal,onText,max=8000}={}){
-  const {key,model}=cfg();
+  const {key,model,ws}=cfg();
   if(!key) throw {code:"no_key"};
+  const headers={"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"};
+  if(ws) headers["anthropic-workspace-id"]=ws;
   let res;
   try{
-    res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal,headers:{
-      "content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",signal,headers,
       body:JSON.stringify({model,max_tokens:max,stream:true,messages:[{role:"user",content}]})});
   }catch(e){throw {code:e?.name==="AbortError"?"cancelled":"network"};}
   if(!res.ok){
     let m="";try{m=(await res.json()).error?.message||""}catch(e){}
-    const code=res.status===401||res.status===403?"bad_key":res.status===429||res.status===529?"rate_limited":/credit/i.test(m)?"no_credit":"upstream_error";
+    const code=/workspace/i.test(m)?"need_ws":res.status===401||res.status===403?"bad_key":res.status===429||res.status===529?"rate_limited":/credit/i.test(m)?"no_credit":"upstream_error";
     throw {code,message:m};
   }
   const reader=res.body.getReader(),dec=new TextDecoder();let buf="",text="";
@@ -419,17 +423,17 @@ async function connect(){
 /* ---------- configurações ---------- */
 function setupSettings(){
   const c=cfg();
-  $("#apiKey").value=c.key||"";$("#apiModel").value=c.model||"claude-sonnet-5-5";
+  $("#apiKey").value=c.key||"";$("#apiWs").value=c.ws||"";$("#apiModel").value=c.model||"claude-sonnet-5-5";
   $("#keyBanner").hidden=!!c.key;
   $("#cfgSave").onclick=()=>{
     const key=$("#apiKey").value.trim();
-    lsSet(CFGKEY,{key,model:$("#apiModel").value});
+    lsSet(CFGKEY,{...cfg(),key,model:$("#apiModel").value,ws:$("#apiWs").value.trim()});
     $("#keyBanner").hidden=!!key;$("#cfgMsg").textContent=key?"Salvo neste aparelho.":"Chave apagada.";
   };
   $("#cfgTest").onclick=async()=>{
     $("#cfgSave").click();$("#cfgMsg").textContent="Testando...";
     try{await callClaude([{type:"text",text:"Responda só: ok"}],{max:1000});$("#cfgMsg").textContent="Funcionou. A chave está ok.";}
-    catch(e){$("#cfgMsg").textContent=errMsg(e)+(e?.message?" ("+e.message+")":"");}
+    catch(e){$("#cfgMsg").textContent=errMsg(e)+(e?.message&&e.code!=="need_ws"?" ("+e.message+")":"");}
   };
   $("#exportBtn").onclick=()=>{
     const blob=new Blob([JSON.stringify(DATA,null,1)],{type:"application/json"});
@@ -463,6 +467,8 @@ const ds=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+Strin
 const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
 const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ds(d)};
 const today=()=>ds(new Date());
+const tsFor=(d,hm)=>{const [h,mi]=hm.split(":").map(Number);const x=parse(d);x.setHours(h,mi,0,0);return x.getTime()};
+const hhmm=ts=>{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
 const r0=n=>Math.round(Number(n)||0);
 const r1=n=>Math.round((Number(n)||0)*10)/10;
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -472,7 +478,7 @@ let S=null,AI=null;
 let sel=today(), profile=null, meals=[], body=[], unsub=null, pending=null, photo=null, ctl=null, metric="peso";
 let selMeal=(()=>{const h=new Date().getHours();return h<10?"cafe":h<12?"lanche1":h<15?"almoco":h<18?"lanche2":h<21?"jantar":"ceia"})();
 
-const ERR={cancelled:"Cancelado.",not_granted:"Você não liberou o uso do Claude para este app.",rate_limited:"Muitas análises seguidas. Espere um pouco e tente de novo.",image_rejected:"Essa foto não deu para ler. Tente outra.",invalid_json:"A resposta veio estranha. Tente de novo.",empty:"Não consegui identificar os alimentos. Descreva com mais detalhes.",no_key:"Coloque sua chave API na aba Ajustes.",bad_key:"Chave API inválida. Confira na aba Ajustes.",no_credit:"Sua conta da API está sem crédito.",network:"Sem internet ou a API não respondeu."};
+const ERR={cancelled:"Cancelado.",not_granted:"Você não liberou o uso do Claude para este app.",rate_limited:"Muitas análises seguidas. Espere um pouco e tente de novo.",image_rejected:"Essa foto não deu para ler. Tente outra.",invalid_json:"A resposta veio estranha. Tente de novo.",empty:"Não consegui identificar os alimentos. Descreva com mais detalhes.",no_key:"Coloque sua chave API na aba Ajustes.",bad_key:"Chave API inválida. Confira na aba Ajustes.",no_credit:"Sua conta da API está sem crédito.",need_ws:"Essa chave precisa do ID do workspace. Preencha o campo Workspace ID em Ajustes, ou crie uma chave dentro de um workspace.",network:"Sem internet ou a API não respondeu."};
 const errMsg=e=>ERR[e?.code]||"Não consegui agora. Tente de novo.";
 
 /* ---------- metas ---------- */
@@ -553,7 +559,12 @@ function renderMeals(){
       ${m.text?`<p class="txt">${esc(m.text)}${m.foto?" (com foto)":""}</p>`:""}
       <ul class="items">${(m.items||[]).map(i=>`<li>${esc(i.nome)}${i.porcao?" ("+esc(i.porcao)+")":""}: <span class="num">${r0(i.kcal)} kcal</span></li>`).join("")}</ul>
       ${m.comentario?`<p class="note ${esc(m.sinal||"")}">${esc(m.comentario)}</p>`:""}
-      <div><button class="del" data-del="${esc(m.id)}">Apagar</button></div>
+      <div class="row"><button class="del" data-edit="${esc(m.id)}">Editar horário</button><button class="del" data-del="${esc(m.id)}">Apagar</button></div>
+      <div class="row editbox" data-box="${esc(m.id)}" hidden>
+        <select data-emeal style="width:auto">${MEALS.map(([k,l])=>`<option value="${k}" ${k===m.meal?"selected":""}>${l}</option>`).join("")}</select>
+        <input type="time" data-etime value="${hhmm(m.ts)}" style="width:auto">
+        <button class="primary" data-esave="${esc(m.id)}">Salvar</button><button data-ecancel="${esc(m.id)}">Cancelar</button>
+      </div>
     </div>`;}).join("");
 }
 function renderPreview(){
@@ -749,15 +760,27 @@ $("#preview").addEventListener("click",async e=>{
   if(e.target.id==="discard"){pending=null;renderPreview();return;}
   if(e.target.id==="saveMeal"){
     e.target.disabled=true;$("#saveMsg").textContent="Salvando...";
-    const doc={date:sel,ts:sel===today()?Date.now():parse(sel).getTime()+12*3600e3,meal:selMeal,text:pending.text??$("#mealText").value.trim(),items:pending.items,tot:sumItems(pending.items),comentario:pending.comentario||"",sinal:pending.sinal||"",foto:!!pending.foto};
+    const tv=$("#mealTime").value;const doc={date:sel,ts:tv?tsFor(sel,tv):(sel===today()?Date.now():parse(sel).getTime()+12*3600e3),meal:selMeal,text:pending.text??$("#mealText").value.trim(),items:pending.items,tot:sumItems(pending.items),comentario:pending.comentario||"",sinal:pending.sinal||"",foto:!!pending.foto};
     try{
       await S.addMeal(doc);
-      pending=null;$("#mealText").value="";$("#photoClear").click();$("#aiHint").textContent="Refeição salva. Pode lançar a próxima.";
+      pending=null;$("#mealText").value="";$("#mealTime").value="";$("#photoClear").click();$("#aiHint").textContent="Refeição salva. Pode lançar a próxima.";
       renderPreview();
     }catch(err){$("#saveMsg").textContent=err?.code==="quota_exceeded"?"Espaço cheio. Apague registros antigos.":"Não salvou. Tente de novo.";e.target.disabled=false;}
   }
 });
 $("#mealsList").addEventListener("click",async e=>{
+  const ed=e.target.closest("[data-edit]");
+  if(ed){const box=document.querySelector(`[data-box="${CSS.escape(ed.dataset.edit)}"]`);box.hidden=!box.hidden;return;}
+  const ca=e.target.closest("[data-ecancel]");
+  if(ca){document.querySelector(`[data-box="${CSS.escape(ca.dataset.ecancel)}"]`).hidden=true;return;}
+  const sv=e.target.closest("[data-esave]");
+  if(sv){
+    const id=sv.dataset.esave,box=sv.closest(".editbox"),m=meals.find(x=>x.id===id);if(!m)return;
+    const t=box.querySelector("[data-etime]").value,meal=box.querySelector("[data-emeal]").value;
+    sv.disabled=true;
+    try{await S.updateMeal(id,{ts:t?tsFor(m.date,t):m.ts,meal});}catch(err){sv.disabled=false;sv.textContent="Não salvou";}
+    return;
+  }
   const b=e.target.closest("[data-del]");if(!b)return;
   if(!b.classList.contains("arm")){b.classList.add("arm");b.textContent="Confirmar apagar";setTimeout(()=>{b.classList.remove("arm");b.textContent="Apagar"},4000);return;}
   b.disabled=true;try{await S.delMeal(b.dataset.del);}catch(err){b.disabled=false;b.textContent="Não apagou";}
