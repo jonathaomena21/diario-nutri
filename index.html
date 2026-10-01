@@ -89,8 +89,13 @@ th:first-child,td:first-child{text-align:left}
 th{font-weight:600;color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.05em}
 td .x{border:none;background:none;color:var(--muted);padding:0 .2em;font-size:1rem}
 .tbl{overflow-x:auto}
-.manual{display:grid;grid-template-columns:2fr repeat(4,minmax(0,1fr));gap:6px}
-@media (max-width:480px){.manual{grid-template-columns:repeat(4,minmax(0,1fr))}.manual .n{grid-column:1/-1}}
+.manual{display:grid;grid-template-columns:2fr repeat(5,minmax(0,1fr));gap:6px}
+.sugar{display:flex;flex-direction:column;gap:4px}
+.sugar .lbl{display:flex;justify-content:space-between;font-size:.82rem;gap:4px;flex-wrap:wrap}
+.sugar .meter{height:7px}
+.sugar i{background:var(--warn)}
+.sugar.over i{background:var(--bad)}
+@media (max-width:480px){.manual{grid-template-columns:repeat(5,minmax(0,1fr))}.manual .n{grid-column:1/-1}}
 .meal{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:6px}
 .meal:first-child{border-top:none;padding-top:0}
 .meal-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -178,6 +183,7 @@ details .form{margin-top:12px}
       <div class="macro c"><div class="lbl"><span>Carbo</span><span class="num" id="cTxt">0 g</span></div><div class="meter"><i id="cBar" style="width:0%"></i></div></div>
       <div class="macro g"><div class="lbl"><span>Gordura</span><span class="num" id="gTxt">0 g</span></div><div class="meter"><i id="gBar" style="width:0%"></i></div></div>
     </div>
+    <div class="sugar" id="sugarBox"><div class="lbl"><span>Açúcar adicionado <span class="stamp">(doces, refri, açúcar no café, sucos de caixinha)</span></span><span class="num" id="aTxt">0 g</span></div><div class="meter"><i id="aBar" style="width:0%"></i></div></div>
     <div class="chips" id="statusChips"></div>
   </section>
 
@@ -209,6 +215,7 @@ details .form{margin-top:12px}
         <input id="mP" type="number" inputmode="decimal" placeholder="prot g">
         <input id="mC" type="number" inputmode="decimal" placeholder="carb g">
         <input id="mG" type="number" inputmode="decimal" placeholder="gord g">
+        <input id="mA" type="number" inputmode="decimal" placeholder="açúcar g">
       </div>
       <div class="row" style="margin-top:8px"><button id="mAdd">Adicionar item</button></div>
     </div>
@@ -495,11 +502,12 @@ function targets(p){
   const prot=Math.round(p.peso*(p.obj==="manter"?1.6:2.0));
   const gord=Math.round(p.peso*0.9);
   const carb=Math.max(0,Math.round((kcal-prot*4-gord*9)/4));
-  return {kcal,prot,carb,gord,tdee:Math.round(tdee),lbm:!!lbm};
+  const acucar=Math.round(kcal*0.10/4);
+  return {kcal,prot,carb,gord,acucar,tdee:Math.round(tdee),lbm:!!lbm};
 }
-const sumItems=items=>items.reduce((a,i)=>({kcal:a.kcal+r0(i.kcal),prot:a.prot+r0(i.prot),carb:a.carb+r0(i.carb),gord:a.gord+r0(i.gord)}),{kcal:0,prot:0,carb:0,gord:0});
+const sumItems=items=>items.reduce((a,i)=>({kcal:a.kcal+r0(i.kcal),prot:a.prot+r0(i.prot),carb:a.carb+r0(i.carb),gord:a.gord+r0(i.gord),acucar:a.acucar+r0(i.acucar)}),{kcal:0,prot:0,carb:0,gord:0,acucar:0});
 const dayMeals=d=>meals.filter(m=>m.date===d).sort((a,b)=>a.ts-b.ts);
-const dayTot=d=>dayMeals(d).reduce((a,m)=>{const t=m.tot||sumItems(m.items||[]);return{kcal:a.kcal+t.kcal,prot:a.prot+t.prot,carb:a.carb+t.carb,gord:a.gord+t.gord}},{kcal:0,prot:0,carb:0,gord:0});
+const dayTot=d=>dayMeals(d).reduce((a,m)=>{const t=sumItems(m.items||[]);return{kcal:a.kcal+t.kcal,prot:a.prot+t.prot,carb:a.carb+t.carb,gord:a.gord+t.gord,acucar:a.acucar+t.acucar}},{kcal:0,prot:0,carb:0,gord:0,acucar:0});
 
 /* ---------- render ---------- */
 function dateLabel(s){
@@ -530,7 +538,12 @@ function render(){
     if(pr>=0.9) chips.push(["ok","Proteína ok"]);
     else chips.push([judge?"bad":"warn","Faltam "+(T.prot-t.prot)+" g de proteína"]);
     if(t.gord>T.gord*1.3) chips.push(["warn","Gordura alta"]);
+    if(t.acucar>T.acucar) chips.push(["bad","Açúcar acima do limite"]);
+    else if(t.acucar>T.acucar*0.7) chips.push(["warn","Açúcar perto do limite"]);
   }
+  $("#aTxt").textContent=t.acucar+(T?" / "+T.acucar:"")+" g";
+  $("#aBar").style.width=pct(t.acucar,T?.acucar)+"%";
+  $("#sugarBox").classList.toggle("over",!!T&&t.acucar>T.acucar);
   $("#statusChips").innerHTML=chips.map(([c,l])=>`<span class="chip ${c}">${esc(l)}</span>`).join("");
   renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();
 }
@@ -551,13 +564,13 @@ function renderMeals(){
   const list=dayMeals(sel);
   if(!list.length){$("#mealsList").innerHTML=`<p class="empty">${S?"Nada lançado nesse dia. Use o campo acima para lançar.":"Sem onde salvar ainda. Veja o aviso no topo."}</p>`;return;}
   $("#mealsList").innerHTML=list.map(m=>{
-    const t=m.tot||sumItems(m.items||[]);
+    const t=sumItems(m.items||[]);
     const hr=new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     return `<div class="meal">
       <div class="meal-h"><b>${esc(MEAL_NAME[m.meal]||"Refeição")} <span class="stamp">${hr}</span></b>
-        <span class="num" style="font-size:.85rem">${t.kcal} kcal · P ${t.prot} · C ${t.carb} · G ${t.gord}</span></div>
+        <span class="num" style="font-size:.85rem">${t.kcal} kcal · P ${t.prot} · C ${t.carb} · G ${t.gord}${t.acucar?" · Açúcar "+t.acucar:""}</span></div>
       ${m.text?`<p class="txt">${esc(m.text)}${m.foto?" (com foto)":""}</p>`:""}
-      <ul class="items">${(m.items||[]).map(i=>`<li>${esc(i.nome)}${i.porcao?" ("+esc(i.porcao)+")":""}: <span class="num">${r0(i.kcal)} kcal</span></li>`).join("")}</ul>
+      <ul class="items">${(m.items||[]).map(i=>`<li>${esc(i.nome)}${i.porcao?" ("+esc(i.porcao)+")":""}: <span class="num">${r0(i.kcal)} kcal${r0(i.acucar)?" · "+r0(i.acucar)+" g açúcar":""}</span></li>`).join("")}</ul>
       ${m.comentario?`<p class="note ${esc(m.sinal||"")}">${esc(m.comentario)}</p>`:""}
       <div class="row"><button class="del" data-edit="${esc(m.id)}">Editar horário</button><button class="del" data-del="${esc(m.id)}">Apagar</button></div>
       <div class="row editbox" data-box="${esc(m.id)}" hidden>
@@ -574,9 +587,9 @@ function renderPreview(){
   if(pending.loading){box.innerHTML=`<p class="hint" style="margin:0">${esc(pending.loading)}</p>`;return;}
   const t=sumItems(pending.items);
   box.innerHTML=`<div class="eyebrow">Confira antes de salvar · ${esc(MEAL_NAME[selMeal])}</div>
-    <div class="tbl"><table><thead><tr><th>Item</th><th>kcal</th><th>P</th><th>C</th><th>G</th><th></th></tr></thead><tbody>
-    ${pending.items.map((i,n)=>`<tr><td>${esc(i.nome)}${i.porcao?`<br><span class="stamp">${esc(i.porcao)}</span>`:""}</td><td class="num">${r0(i.kcal)}</td><td class="num">${r0(i.prot)}</td><td class="num">${r0(i.carb)}</td><td class="num">${r0(i.gord)}</td><td><button class="x" data-rm="${n}" aria-label="Remover ${esc(i.nome)}">×</button></td></tr>`).join("")}
-    <tr><td><b>Total</b></td><td class="num"><b>${t.kcal}</b></td><td class="num">${t.prot}</td><td class="num">${t.carb}</td><td class="num">${t.gord}</td><td></td></tr>
+    <div class="tbl"><table><thead><tr><th>Item</th><th>kcal</th><th>P</th><th>C</th><th>G</th><th>Açúc</th><th></th></tr></thead><tbody>
+    ${pending.items.map((i,n)=>`<tr><td>${esc(i.nome)}${i.porcao?`<br><span class="stamp">${esc(i.porcao)}</span>`:""}</td><td class="num">${r0(i.kcal)}</td><td class="num">${r0(i.prot)}</td><td class="num">${r0(i.carb)}</td><td class="num">${r0(i.gord)}</td><td class="num">${r0(i.acucar)}</td><td><button class="x" data-rm="${n}" aria-label="Remover ${esc(i.nome)}">×</button></td></tr>`).join("")}
+    <tr><td><b>Total</b></td><td class="num"><b>${t.kcal}</b></td><td class="num">${t.prot}</td><td class="num">${t.carb}</td><td class="num">${t.gord}</td><td class="num">${t.acucar}</td><td></td></tr>
     </tbody></table></div>
     ${pending.comentario?`<p class="note ${esc(pending.sinal||"")}" style="background:var(--surface)">${esc(pending.comentario)}</p>`:""}
     <div class="row"><button class="primary" id="saveMeal" ${pending.items.length&&S?"":"disabled"}>Salvar refeição</button><button id="discard">Descartar</button><span class="hint" id="saveMsg"></span></div>`;
@@ -706,9 +719,9 @@ function dayText(d){
   const list=dayMeals(d);
   if(!list.length) return `${d}: nada lançado.`;
   const t=dayTot(d);
-  return `${d} (total ${t.kcal} kcal, P ${t.prot} g, C ${t.carb} g, G ${t.gord} g):\n`+list.map(m=>{
+  return `${d} (total ${t.kcal} kcal, P ${t.prot} g, C ${t.carb} g, G ${t.gord} g, açúcar adicionado ${t.acucar} g):\n`+list.map(m=>{
     const hr=new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
-    return `- ${MEAL_NAME[m.meal]} ${hr}: `+(m.items||[]).map(i=>`${i.nome}${i.porcao?" "+i.porcao:""} (${r0(i.kcal)} kcal, P${r0(i.prot)})`).join("; ");
+    return `- ${MEAL_NAME[m.meal]} ${hr}: `+(m.items||[]).map(i=>`${i.nome}${i.porcao?" "+i.porcao:""} (${r0(i.kcal)} kcal, P${r0(i.prot)}${r0(i.acucar)?", açúcar "+r0(i.acucar)+" g":""})`).join("; ");
   }).join("\n");
 }
 const STYLE="Escreva em português do Brasil, com palavras simples e frases curtas. Não use travessão (o caractere —) em nenhum lugar. Não use tabelas.";
@@ -724,8 +737,8 @@ $("#manualToggle").addEventListener("click",()=>{$("#manualBox").hidden=!$("#man
 $("#mAdd").addEventListener("click",()=>{
   const nome=$("#mNome").value.trim();if(!nome){$("#mNome").focus();return;}
   if(!pending||pending.loading) pending={items:[],comentario:"",sinal:""};
-  pending.items.push({nome,porcao:"",kcal:r0($("#mK").value),prot:r0($("#mP").value),carb:r0($("#mC").value),gord:r0($("#mG").value)});
-  ["#mNome","#mK","#mP","#mC","#mG"].forEach(id=>$(id).value="");
+  pending.items.push({nome,porcao:"",kcal:r0($("#mK").value),prot:r0($("#mP").value),carb:r0($("#mC").value),gord:r0($("#mG").value),acucar:r0($("#mA").value)});
+  ["#mNome","#mK","#mP","#mC","#mG","#mA"].forEach(id=>$(id).value="");
   renderPreview();
 });
 $("#analyze").addEventListener("click",async()=>{
@@ -740,14 +753,15 @@ $("#analyze").addEventListener("click",async()=>{
 Até agora no dia ${sel} ele já comeu ${soFar.kcal} kcal e ${soFar.prot} g de proteína.
 Refeição: ${MEAL_NAME[selMeal]}.
 Descrição do paciente: "${text||"(sem texto, veja a foto)"}"${photo?"\nHá uma foto do prato anexada: use para estimar tipos de alimento e porções.":""}
-Separe em itens, estime a porção em medida caseira e gramas quando der, e calcule kcal, proteína, carboidrato e gordura de cada item usando a tabela TACO e rótulos comuns do Brasil. Se a quantidade não foi dita, use uma porção típica de adulto e deixe isso claro na porção.
+Separe em itens, estime a porção em medida caseira e gramas quando der, e calcule kcal, proteína, carboidrato, gordura e açúcar adicionado (campo "acucar", em gramas) de cada item usando a tabela TACO e rótulos comuns do Brasil. Se a quantidade não foi dita, use uma porção típica de adulto e deixe isso claro na porção.
+Açúcar adicionado é o açúcar colocado no alimento: açúcar no café ou suco, mel, doces, chocolate, bolo, biscoito recheado, refrigerante, suco de caixinha, achocolatado, molhos prontos. O açúcar natural da fruta inteira, do leite puro e de legumes conta como 0.
 Depois escreva um comentário curto (1 ou 2 frases) sobre essa refeição pensando no objetivo dele, e dê um sinal: "bom", "atencao" ou "alerta".
 ${STYLE}
 Responda somente com JSON neste formato:
-{"itens":[{"nome":"Pão francês","porcao":"2 un (100 g)","kcal":300,"prot":8,"carb":58,"gord":3}],"comentario":"...","sinal":"bom"}`;
+{"itens":[{"nome":"Pão francês","porcao":"2 un (100 g)","kcal":300,"prot":8,"carb":58,"gord":3,"acucar":1}],"comentario":"...","sinal":"bom"}`;
   try{
     const r=await AI.json(prompt,{signal:ctl.signal,image:photo});
-    const items=(Array.isArray(r?.itens)?r.itens:[]).map(i=>({nome:String(i.nome||"Item"),porcao:String(i.porcao||""),kcal:r0(i.kcal),prot:r0(i.prot),carb:r0(i.carb),gord:r0(i.gord)}));
+    const items=(Array.isArray(r?.itens)?r.itens:[]).map(i=>({nome:String(i.nome||"Item"),porcao:String(i.porcao||""),kcal:r0(i.kcal),prot:r0(i.prot),carb:r0(i.carb),gord:r0(i.gord),acucar:r0(i.acucar)}));
     if(!items.length) throw {code:"empty"};
     pending={items,comentario:String(r.comentario||""),sinal:["bom","atencao","alerta"].includes(r.sinal)?r.sinal:"",text,foto:!!photo};
   }catch(e){pending=null;$("#aiHint").textContent=errMsg(e);}
@@ -817,7 +831,7 @@ Monte a resposta assim, em markdown simples (títulos com ###, listas com -):
 ### Resumo
 2 ou 3 frases dizendo como ${kind==="semana"?"foi a semana":"está o dia"} em relação às metas.
 ### Sinais
-Lista curta com o que está bom e o que preocupa (proteína, calorias, fritura, açúcar, fibras, verduras, horários, pular refeição, álcool etc.). Seja direta.
+Lista curta com o que está bom e o que preocupa (proteína, calorias, fritura, açúcar adicionado comparado ao limite de ${targets(profile)?.acucar||"50"} g por dia, fibras, verduras, horários, pular refeição, álcool etc.). Seja direta.
 ### ${kind==="semana"?"Ajustes para a próxima semana":(isToday?"O que comer no resto do dia":"O que ajustar amanhã")}
 Sugestões práticas com alimentos comuns e baratos do Brasil, com quantidades${kind==="semana"?"":", fechando a meta de proteína e calorias"}.
 ${STYLE} Não repita os números de cada refeição, foque no que importa.`;
