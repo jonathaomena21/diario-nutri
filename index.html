@@ -90,6 +90,9 @@ th{font-weight:600;color:var(--muted);font-size:.74rem;text-transform:uppercase;
 td .x{border:none;background:none;color:var(--muted);padding:0 .2em;font-size:1rem}
 .tbl{overflow-x:auto}
 .manual{display:grid;grid-template-columns:2fr repeat(5,minmax(0,1fr));gap:6px}
+.impact{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;align-items:baseline}
+.impact .over{color:var(--bad);font-weight:600}
+.impact .good{color:var(--ok);font-weight:600}
 .sugar{display:flex;flex-direction:column;gap:4px}
 .sugar .lbl{display:flex;justify-content:space-between;font-size:.82rem;gap:4px;flex-wrap:wrap}
 .sugar .meter{height:7px}
@@ -192,7 +195,18 @@ details .form{margin-top:12px}
     <div class="week" id="week"></div>
   </section>
 
-  <section class="panel" data-tab="hoje" aria-label="Lançar refeição">
+  <section class="panel" data-tab="hoje" aria-label="Posso comer">
+    <div>
+      <h2>Posso comer isso?</h2>
+      <p class="hint">Pergunte antes de comer. A nutri mostra como fica o seu dia e se vale a pena.</p>
+    </div>
+    <textarea id="askText" style="min-height:56px" placeholder="Ex.: um x-salada com batata frita e refri / 2 fatias de pizza de calabresa"></textarea>
+    <div class="photo" id="askPhotoWrap"><label class="hint" for="askPhoto">Foto ou rótulo (opcional): <input type="file" id="askPhoto" accept="image/*" style="max-width:220px"></label></div>
+    <div class="row"><button class="primary" id="askBtn">Perguntar</button><span class="hint" id="askMsg"></span></div>
+    <div id="askOut" class="preview" hidden></div>
+  </section>
+
+  <section class="panel" data-tab="hoje" id="logPanel" aria-label="Lançar refeição">
     <h2>Lançar refeição</h2>
     <div class="mealpick" id="mealPick"></div>
     <textarea id="mealText" placeholder="Ex.: 2 pães franceses com 2 ovos mexidos e café com leite integral (200 ml)"></textarea>
@@ -545,7 +559,7 @@ function render(){
   $("#aBar").style.width=pct(t.acucar,T?.acucar)+"%";
   $("#sugarBox").classList.toggle("over",!!T&&t.acucar>T.acucar);
   $("#statusChips").innerHTML=chips.map(([c,l])=>`<span class="chip ${c}">${esc(l)}</span>`).join("");
-  renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();
+  renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();renderAsk();
 }
 function renderWeek(T){
   const days=[...Array(7)].map((_,i)=>addDays(sel,i-6));
@@ -800,6 +814,64 @@ $("#mealsList").addEventListener("click",async e=>{
   b.disabled=true;try{await S.delMeal(b.dataset.del);}catch(err){b.disabled=false;b.textContent="Não apagou";}
 });
 
+/* ---------- posso comer? ---------- */
+let ask=null;
+function renderAsk(){
+  const box=$("#askOut");
+  if(!ask){box.hidden=true;box.innerHTML="";return;}
+  box.hidden=false;
+  const T=targets(profile),now=dayTot(sel),add=sumItems(ask.items);
+  const V={pode:["ok","Pode comer"],moderacao:["warn","Pode, com moderação"],evitar:["bad","Melhor evitar agora"]}[ask.veredito]||["mut","Avaliação"];
+  const row=(l,k,u,goodHigh)=>{
+    const a=now[k]+add[k],m=T?.[k];
+    let cls="";if(m){if(goodHigh){if(a>=m*0.9&&now[k]<m*0.9)cls="good";}else if(a>m)cls="over";}
+    if(k==="kcal"&&m&&a>m*1.15)cls="over";
+    return `<span>${l}</span><span class="num ${cls}">${now[k]} → ${a}${m?" de "+m:""} ${u} <span class="stamp">(+${add[k]})</span></span>`;
+  };
+  box.innerHTML=`<div class="row"><span class="chip ${V[0]}">${V[1]}</span></div>
+    <p style="margin:0">${esc(ask.resumo)}</p>
+    <div class="eyebrow">Como fica o seu dia</div>
+    <div class="impact">${row("Calorias","kcal","kcal",false)}${row("Proteína","prot","g",true)}${row("Açúcar","acucar","g",false)}${row("Gordura","gord","g",false)}${row("Carbo","carb","g",false)}</div>
+    ${ask.sugestao?`<p class="note" style="background:var(--surface)"><b>Dica:</b> ${esc(ask.sugestao)}</p>`:""}
+    <div class="row"><button class="primary" id="askEat">Vou comer, lançar</button><button id="askClose">Fechar</button></div>`;
+}
+$("#askPhoto").addEventListener("change",e=>{askPhotoFile=e.target.files[0]||null;});
+let askPhotoFile=null;
+$("#askBtn").addEventListener("click",async()=>{
+  const q=$("#askText").value.trim();
+  if(!q&&!askPhotoFile){$("#askText").focus();$("#askMsg").textContent="Escreva o que pensa em comer.";return;}
+  if(!AI){$("#askMsg").textContent="Indisponível aqui.";return;}
+  $("#askBtn").disabled=true;$("#askMsg").textContent="Pensando...";ask=null;renderAsk();
+  const prompt=`Você é a nutricionista do paciente. Ele ainda NÃO comeu e quer saber se pode comer algo e como isso afeta o dia dele. ${profileText()}
+Agora são ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}. O que ele já comeu hoje:
+${dayText(sel)}
+O que ele pensa em comer: "${q||"(veja a foto)"}"${askPhotoFile?"\nHá uma foto anexada (prato ou rótulo): use para identificar o alimento e a porção.":""}
+Calcule os itens com porção, kcal, proteína, carboidrato, gordura e açúcar adicionado (campo "acucar", em gramas; açúcar natural de fruta inteira e leite puro conta 0), usando a tabela TACO e rótulos comuns do Brasil. Se a quantidade não foi dita, use uma porção típica de adulto.
+Depois avalie pensando no objetivo, nas metas, no horário e no que ele já comeu:
+- "veredito": "pode", "moderacao" ou "evitar".
+- "resumo": 2 ou 3 frases diretas dizendo se vale a pena e quanto isso pesa no dia dele (calorias, proteína, açúcar, gordura).
+- "sugestao": uma dica prática, como porção ideal, o que tirar ou trocar, ou o que comer junto para melhorar. Não seja chata: comida de vez em quando faz parte.
+${STYLE}
+Responda somente com JSON neste formato:
+{"itens":[{"nome":"X-salada","porcao":"1 un (250 g)","kcal":550,"prot":28,"carb":40,"gord":30,"acucar":4}],"veredito":"moderacao","resumo":"...","sugestao":"..."}`;
+  try{
+    const r=await AI.json(prompt,{image:askPhotoFile});
+    const items=(Array.isArray(r?.itens)?r.itens:[]).map(i=>({nome:String(i.nome||"Item"),porcao:String(i.porcao||""),kcal:r0(i.kcal),prot:r0(i.prot),carb:r0(i.carb),gord:r0(i.gord),acucar:r0(i.acucar)}));
+    if(!items.length) throw {code:"empty"};
+    ask={items,veredito:String(r.veredito||""),resumo:String(r.resumo||""),sugestao:String(r.sugestao||""),q,foto:!!askPhotoFile};
+    $("#askMsg").textContent="";
+  }catch(e){$("#askMsg").textContent=errMsg(e);}
+  $("#askBtn").disabled=false;renderAsk();
+});
+$("#askOut").addEventListener("click",e=>{
+  if(e.target.id==="askClose"){ask=null;renderAsk();return;}
+  if(e.target.id==="askEat"){
+    pending={items:ask.items,comentario:ask.resumo,sinal:{pode:"bom",moderacao:"atencao",evitar:"alerta"}[ask.veredito]||"",text:ask.q,foto:ask.foto};
+    ask=null;$("#askText").value="";$("#askPhoto").value="";askPhotoFile=null;renderAsk();renderPreview();
+    $("#preview").scrollIntoView({behavior:"smooth",block:"center"});
+  }
+});
+
 /* ---------- nutri ---------- */
 function stampTxt(kind,ts){return kind+" · feita "+new Date(ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 async function loadSaved(){
@@ -917,7 +989,7 @@ render();fillProfile();
   const r=await connect();
   S=r.S;AI=r.AI;
   $("#conn").textContent=r.status;
-  if(!AI?.images){$("#photoWrap").hidden=true;}
+  if(!AI?.images){$("#photoWrap").hidden=true;$("#askPhotoWrap").hidden=true;}
   if(!AI){$("#aiHint").textContent=r.aiOff||"Análise automática indisponível. Use Lançar manual.";}
   else if(!AI.images) $("#aiHint").textContent="Escreva o que comeu. A nutri calcula tudo e comenta.";
   if(!S){render();return;}
