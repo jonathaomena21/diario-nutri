@@ -90,6 +90,11 @@ th{font-weight:600;color:var(--muted);font-size:.74rem;text-transform:uppercase;
 td .x{border:none;background:none;color:var(--muted);padding:0 .2em;font-size:1rem}
 .tbl{overflow-x:auto}
 .manual{display:grid;grid-template-columns:2fr repeat(5,minmax(0,1fr));gap:6px}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto}
+.msg{max-width:88%;padding:.55em .8em;border-radius:14px;font-size:.92rem;line-height:1.5;min-width:0;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start;background:var(--soft);border-bottom-left-radius:4px}
+.msg.ai p{margin:.3em 0}.msg.ai ul{margin:.3em 0;padding-left:1.1em}.msg.ai h3{font-size:.95rem;margin:.5em 0 .2em}
 .impact{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;align-items:baseline}
 .impact .over{color:var(--bad);font-weight:600}
 .impact .good{color:var(--ok);font-weight:600}
@@ -252,6 +257,19 @@ details .form{margin-top:12px}
     </div>
     <div class="stamp" id="nutriStamp"></div>
     <div class="md" id="nutriOut"><p class="empty">Quando pedir uma análise, ela aparece aqui e fica salva para você rever.</p></div>
+  </section>
+
+  <section class="panel" data-tab="nutri" aria-label="Pergunte para a nutri">
+    <div class="row" style="justify-content:space-between">
+      <div><h2>Pergunte para a nutri</h2><p class="hint">Tire dúvidas sobre alimentação. A conversa apaga quando vira o dia.</p></div>
+      <button class="del" id="chatClear">Limpar</button>
+    </div>
+    <div class="chat" id="chatLog"></div>
+    <form class="row chatform" id="chatForm">
+      <input id="chatIn" autocomplete="off" placeholder="Ex.: o que o carboidrato vira no corpo?" style="flex:1 1 200px">
+      <button class="primary" type="submit" id="chatSend">Enviar</button>
+      <button type="button" id="chatStop" hidden>Parar</button>
+    </form>
   </section>
 
   <section class="panel" data-tab="corpo" aria-label="Corpo">
@@ -436,6 +454,7 @@ const API_AI={
 };
 
 async function connect(){
+  try{const hoje="chat-"+ds(new Date());let mud=false;for(const k of Object.keys(DATA.kv))if(k.startsWith("chat-")&&k!==hoje){delete DATA.kv[k];mud=true;}if(mud)lsSet(LSKEY,DATA);}catch(e){}
   const ok=lsSet("diarioNutri.test",1);
   setupSettings();
   return {S:STORE,AI:API_AI,status:ok?"Dados salvos neste aparelho":"Atenção: este navegador não está salvando os dados (modo anônimo?)"};
@@ -872,6 +891,53 @@ $("#askOut").addEventListener("click",e=>{
   }
 });
 
+/* ---------- chat do dia ---------- */
+let chat=[],chatCtl=null;
+const chatKey=()=>"chat-"+today();
+function renderChat(streaming){
+  const log=$("#chatLog");
+  if(!chat.length&&!streaming){log.innerHTML=`<p class="empty">Nenhuma pergunta hoje ainda. Pergunte qualquer coisa, tipo "proteína demais faz mal?" ou "posso comer fruta à noite?".</p>`;return;}
+  log.innerHTML=chat.map(m=>m.role==="user"?`<div class="msg me">${esc(m.content)}</div>`:`<div class="msg ai">${md(m.content)}</div>`).join("")+(streaming!=null?`<div class="msg ai" id="chatLive">${streaming?md(streaming):"Pensando..."}</div>`:"");
+  log.scrollTop=log.scrollHeight;
+}
+async function loadChat(){
+  chat=[];
+  if(S){try{const c=await S.getKV(chatKey());if(c?.date===today()&&Array.isArray(c.msgs))chat=c.msgs;}catch(e){}}
+  renderChat();
+}
+function saveChat(){S?.setKV(chatKey(),{date:today(),msgs:chat,ts:Date.now()}).catch(()=>{});}
+$("#chatForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const q=$("#chatIn").value.trim();if(!q)return;
+  if(!AI){$("#chatLog").innerHTML=`<p class="empty">Indisponível aqui.</p>`;return;}
+  chat.push({role:"user",content:q});$("#chatIn").value="";renderChat("");
+  $("#chatSend").disabled=true;$("#chatStop").hidden=false;chatCtl=new AbortController();
+  const hist=chat.slice(-12).map(m=>(m.role==="user"?"Paciente: ":"Nutri: ")+m.content).join("\n\n");
+  const prompt=`Você é a nutricionista do paciente, respondendo dúvidas num chat rápido pelo celular. ${profileText()}
+O que ele comeu hoje, se ajudar na resposta:
+${dayText(today())}
+
+Regras: responda a última pergunta de forma curta e direta (até uns 8 a 10 linhas), em linguagem do dia a dia, explicando como para um leigo. Use exemplos com comida brasileira quando ajudar. Ligue a resposta ao objetivo dele quando fizer sentido. Se for algo de saúde que precise de médico (dor, remédio, doença, exame alterado), responda o básico e recomende procurar um profissional. Pode usar listas com - e negrito com **. ${STYLE}
+
+Conversa até agora:
+${hist}
+
+Nutri:`;
+  try{
+    const text=await AI.text(prompt,{signal:chatCtl.signal,onText:t=>{const el=$("#chatLive");if(el){el.innerHTML=md(t);$("#chatLog").scrollTop=$("#chatLog").scrollHeight;}}});
+    chat.push({role:"assistant",content:text.trim()});saveChat();renderChat();
+  }catch(err){
+    if(err?.text) chat.push({role:"assistant",content:err.text+"\n\n(resposta interrompida)"});
+    else chat.push({role:"assistant",content:errMsg(err)});
+    renderChat();if(err?.text)saveChat();
+  }
+  $("#chatSend").disabled=false;$("#chatStop").hidden=true;
+});
+$("#chatStop").addEventListener("click",()=>chatCtl?.abort());
+$("#chatClear").addEventListener("click",()=>{chat=[];saveChat();renderChat();});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&S){S.getKV(chatKey()).then(c=>{if(!c||c.date!==today()){if(chat.length){chat=[];renderChat();}}}).catch(()=>{});}});
+renderChat();
+
 /* ---------- nutri ---------- */
 function stampTxt(kind,ts){return kind+" · feita "+new Date(ts).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}
 async function loadSaved(){
@@ -1000,7 +1066,7 @@ render();fillProfile();
     render();
   });
   S.onBody(list=>{body=list.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));render();showTargets();});
-  subscribe();loadDiet();render();
+  subscribe();loadDiet();loadChat();render();
 })();
 </script>
 
