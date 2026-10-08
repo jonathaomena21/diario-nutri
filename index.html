@@ -21,7 +21,7 @@
   --bg:#F3F5F1; --surface:#FFFFFF; --line:#DCE2D8; --ink:#1B2A22; --muted:#5E6E64;
   --accent:#2F7A4E; --accent-ink:#FFFFFF; --soft:#E4EFE6;
   --prot:#B5446E; --carb:#C98A16; --gord:#5B5BB0;
-  --ok:#2F7A4E; --warn:#B7791F; --bad:#C0392B;
+  --ok:#2F7A4E; --warn:#B7791F; --bad:#C0392B; --warnsoft:#FFF4E0;
   --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
   --f-body:"Figtree",ui-sans-serif,system-ui,sans-serif;
   --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
@@ -30,12 +30,12 @@
   --bg:#111713; --surface:#18211B; --line:#2B372F; --ink:#E6EDE7; --muted:#9AAA9F;
   --accent:#5FBF86; --accent-ink:#0D1510; --soft:#1F3226;
   --prot:#E27BA3; --carb:#E3B04B; --gord:#9A9AF0;
-  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; color-scheme:dark}}
+  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; --warnsoft:#3A2F17; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111713; --surface:#18211B; --line:#2B372F; --ink:#E6EDE7; --muted:#9AAA9F;
   --accent:#5FBF86; --accent-ink:#0D1510; --soft:#1F3226;
   --prot:#E27BA3; --carb:#E3B04B; --gord:#9A9AF0;
-  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; color-scheme:dark}
+  --ok:#5FBF86; --warn:#E3B04B; --bad:#F07A6A; --warnsoft:#3A2F17; color-scheme:dark}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
 .wrap{max-width:600px;margin:0 auto;padding-inline:16px;padding-block:18px 60px;display:flex;flex-direction:column;gap:18px}
@@ -68,11 +68,18 @@ textarea{resize:vertical;min-height:84px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:.78rem;font-weight:600;padding:.25em .65em;border-radius:99px;border:1px solid currentColor}
 .chip.ok{color:var(--ok)} .chip.warn{color:var(--warn)} .chip.bad{color:var(--bad)} .chip.mut{color:var(--muted)}
-.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:110px;position:relative;padding-top:6px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;align-items:end;height:130px;position:relative;padding-top:6px}
 .week .col{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
 .week .bar{width:70%;max-width:30px;background:var(--line);border-radius:6px 6px 2px 2px;min-height:2px}
-.week .bar.hit{background:var(--accent)} .week .bar.low{background:var(--carb)} .week .bar.sel{outline:2px solid var(--ink);outline-offset:1px}
-.week .d{font-size:.7rem;line-height:14px;color:var(--muted)}
+.week .bar.hit{background:var(--accent)} .week .bar.low{background:var(--carb)} .week .bar.over{background:var(--bad)} .week .bar.sel{outline:2px solid var(--ink);outline-offset:1px}
+.week .bar.fut{background:none;border:1.5px dashed var(--line);height:20px!important}
+.week .col{cursor:pointer;background:none;border:none;padding:0;font:inherit;color:inherit}
+.week .d{font-size:.7rem;line-height:14px;color:var(--muted);text-align:center}
+.week .d b{display:block;font-family:var(--f-num);font-weight:500;font-size:.66rem;color:var(--ink)}
+.wsum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.wsum div{background:var(--soft);border-radius:10px;padding:6px 8px}
+.wsum b{display:block;font-family:var(--f-num);font-size:.95rem}
+.wsum span{font-size:.7rem;color:var(--muted)}
 .goal-line{position:absolute;left:0;right:0;border-top:1px dashed var(--muted);pointer-events:none}
 .goal-line span{position:absolute;right:0;top:-1.3em;font-size:.68rem;color:var(--muted);background:var(--surface);padding-inline:4px}
 .mealpick,.seg{display:flex;gap:6px;flex-wrap:wrap}
@@ -95,6 +102,35 @@ td .x{border:none;background:none;color:var(--muted);padding:0 .2em;font-size:1r
 .msg.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px}
 .msg.ai{align-self:flex-start;background:var(--soft);border-bottom-left-radius:4px}
 .msg.ai p{margin:.3em 0}.msg.ai ul{margin:.3em 0;padding-left:1.1em}.msg.ai h3{font-size:.95rem;margin:.5em 0 .2em}
+.src{display:inline-flex;font-size:.74rem;font-weight:600;padding:.2em .6em;border-radius:99px;background:var(--soft);color:var(--accent);width:max-content;max-width:100%}
+.src.est{background:var(--warnsoft);color:var(--warn)}
+.verdict{border-radius:14px;padding:12px;background:var(--soft);display:flex;flex-direction:column;gap:6px}
+.verdict.warn{background:var(--warnsoft)}
+.verdict .big{font-family:var(--f-display);font-weight:800;font-size:1.3rem;line-height:1.2}
+.scale{position:relative;height:12px;border-radius:99px}
+.scale i{position:absolute;top:-5px;width:4px;height:22px;background:var(--ink);border-radius:2px;margin-left:-2px}
+.scalelbl{display:flex;justify-content:space-between;font-size:.68rem;color:var(--muted);margin-top:4px}
+.conflict{border-left:3px solid var(--warn);background:var(--warnsoft);border-radius:8px;padding:8px 10px;font-size:.86rem}
+.astats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.astats .st{border:1px solid var(--line);border-radius:10px;padding:8px;min-width:0}
+.astats .l{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.astats .v{font-family:var(--f-num);font-size:.98rem}
+.astats .s{font-size:.72rem;font-weight:600}
+.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}.c-mut{color:var(--muted)}
+.plan{margin:0;padding-left:1.1em;font-size:.88rem}
+.since{background:var(--soft);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.since .big{font-family:var(--f-display);font-weight:800;font-size:1.08rem;line-height:1.3}
+.pill{font-size:.7rem;font-weight:700;padding:.15em .55em;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.tl{display:flex;flex-direction:column;font-size:.86rem}
+.tl .e{display:grid;grid-template-columns:14px 1fr;gap:10px;padding-bottom:12px;position:relative}
+.tl .e::before{content:"";position:absolute;left:6px;top:14px;bottom:0;width:2px;background:var(--line)}
+.tl .e:last-child::before{display:none}
+.tl .dot{width:14px;height:14px;border-radius:50%;background:var(--accent);margin-top:3px}
+.tl .dot.w{background:var(--warn)}
+.chart .band{fill:var(--ok);opacity:.13}
+.chart .bandt{fill:var(--ok);font:15px var(--f-body)}
+.chart .mk{stroke:var(--warn);stroke-width:1.5;stroke-dasharray:5 5}
+.chart .mkt{fill:var(--warn);font:14px var(--f-body)}
 .impact{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;align-items:baseline}
 .impact .over{color:var(--bad);font-weight:600}
 .impact .good{color:var(--ok);font-weight:600}
@@ -195,9 +231,10 @@ details .form{margin-top:12px}
     <div class="chips" id="statusChips"></div>
   </section>
 
-  <section class="panel" data-tab="hoje" aria-label="Últimos 7 dias">
-    <div class="row" style="justify-content:space-between"><h2>Últimos 7 dias</h2><span class="hint">verde = bateu a meta</span></div>
+  <section class="panel" data-tab="hoje" aria-label="Semana">
+    <div class="row" style="justify-content:space-between"><h2 id="weekTitle">Esta semana</h2><span class="hint">seg a dom · verde = bateu a meta</span></div>
     <div class="week" id="week"></div>
+    <div class="wsum" id="weekSum"></div>
   </section>
 
   <section class="panel" data-tab="hoje" aria-label="Posso comer">
@@ -272,13 +309,20 @@ details .form{margin-top:12px}
     </form>
   </section>
 
+  <section class="panel" data-tab="corpo" aria-label="Avaliação corporal">
+    <h2>Sua avaliação</h2>
+    <div id="aval" style="display:flex;flex-direction:column;gap:12px"></div>
+  </section>
+
   <section class="panel" data-tab="corpo" aria-label="Corpo">
     <div class="row" style="justify-content:space-between">
-      <h2>Corpo e bioimpedância</h2>
+      <h2>Histórico do corpo</h2>
       <span class="stamp" id="bodyLast"></span>
     </div>
+    <div id="bodySince"></div>
     <div class="stats" id="bodyStats"></div>
     <div class="seg" id="bodyMetric"></div>
+    <div class="seg" id="bodyPeriod"></div>
     <div class="chart" id="bodyChart"></div>
     <details id="bodyAdd">
       <summary>Nova medição</summary>
@@ -300,6 +344,14 @@ details .form{margin-top:12px}
       </form>
     </details>
     <div class="bodylist" id="bodyList"></div>
+  </section>
+
+  <section class="panel" data-tab="corpo" aria-label="Histórico das avaliações">
+    <div>
+      <h2>Histórico das avaliações</h2>
+      <p class="hint">O que o app recomendou em cada medição e o que você escolheu.</p>
+    </div>
+    <div class="tl" id="avalHist"></div>
   </section>
 
   <section class="panel" data-tab="dieta" aria-label="Dieta">
@@ -507,6 +559,8 @@ const ds=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+Strin
 const parse=s=>{const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
 const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ds(d)};
 const today=()=>ds(new Date());
+const weekStart=s=>{const d=parse(s);return addDays(s,-((d.getDay()+6)%7))};
+const weekDays=s=>{const w=weekStart(s);return [...Array(7)].map((_,i)=>addDays(w,i))};
 const tsFor=(d,hm)=>{const [h,mi]=hm.split(":").map(Number);const x=parse(d);x.setHours(h,mi,0,0);return x.getTime()};
 const hhmm=ts=>{const d=new Date(ts);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
 const r0=n=>Math.round(Number(n)||0);
@@ -581,17 +635,26 @@ function render(){
   renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();renderAsk();
 }
 function renderWeek(T){
-  const days=[...Array(7)].map((_,i)=>addDays(sel,i-6));
-  const vals=days.map(d=>dayTot(d).kcal);
+  const days=weekDays(sel), t0=today();
+  const a=parse(days[0]),b=parse(days[6]);
+  $("#weekTitle").textContent=days.includes(t0)?"Esta semana":("Semana de "+a.getDate()+(a.getMonth()!==b.getMonth()?" "+MON[a.getMonth()]:"")+" a "+b.getDate()+" "+MON[b.getMonth()]);
+  const tots=days.map(d=>dayTot(d));
+  const vals=tots.map(x=>x.kcal);
   const max=Math.max(T?.kcal*1.25||0,...vals,1);
   let html=days.map((d,i)=>{
-    const v=vals[i], h=Math.max(2,v/max*84);
-    const cls=!v?"":T&&v>=T.kcal*0.9&&v<=T.kcal*1.15?"hit":T&&v<T.kcal*0.9?"low":"";
-    return `<div class="col" title="${esc(dateLabel(d))}: ${v} kcal"><div class="bar ${cls} ${d===sel?"sel":""}" style="height:${h}px"></div><div class="d">${DOW[parse(d).getDay()]}</div></div>`;
+    const v=vals[i], fut=d>t0, h=Math.max(2,v/max*84);
+    const cls=fut?"fut":!v?"":T&&v>T.kcal*1.15?"over":T&&v>=T.kcal*0.9?"hit":T?"low":"";
+    return `<button type="button" class="col" data-day="${d}" title="${esc(dateLabel(d))}: ${v} kcal"><div class="bar ${cls} ${d===sel?"sel":""}" style="height:${h}px"></div><div class="d">${DOW[parse(d).getDay()]}<b>${v?v.toLocaleString("pt-BR"):"&nbsp;"}</b></div></button>`;
   }).join("");
-  if(T) html+=`<div class="goal-line" style="bottom:${T.kcal/max*84+18}px"><span class="num">${T.kcal}</span></div>`;
+  if(T) html+=`<div class="goal-line" style="bottom:${T.kcal/max*84+32}px"><span class="num">${T.kcal}</span></div>`;
   $("#week").innerHTML=html;
+  const withData=days.map((d,i)=>({d,t:tots[i]})).filter(x=>x.d<=t0&&x.t.kcal>0);
+  if(!withData.length){$("#weekSum").innerHTML=`<p class="hint" style="grid-column:1/-1">Nenhuma refeição lançada nessa semana.</p>`;return;}
+  const avg=k=>Math.round(withData.reduce((s,x)=>s+x.t[k],0)/withData.length);
+  const hits=T?withData.filter(x=>x.t.kcal>=T.kcal*0.9&&x.t.kcal<=T.kcal*1.15).length:null;
+  $("#weekSum").innerHTML=`<div><b>${avg("kcal").toLocaleString("pt-BR")}</b><span>média kcal/dia</span></div><div><b>${hits==null?"…":hits+" de "+withData.length}</b><span>dias na meta</span></div><div><b>${avg("prot")} g</b><span>média proteína</span></div>`;
 }
+$("#week").addEventListener("click",e=>{const b=e.target.closest("[data-day]");if(!b)return;const d=b.dataset.day;if(d>today()||d===sel)return;sel=d;subscribe();render();});
 function renderMealPick(){$("#mealPick").innerHTML=MEALS.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${k===selMeal}">${l}</button>`).join("");}
 function renderMeals(){
   const list=dayMeals(sel);
@@ -639,6 +702,127 @@ function md(t){
   return out+(inList?"</ul>":"");
 }
 
+/* ---------- histórico de avaliações e marcos ---------- */
+let hist={avaliacoes:[],marcos:[]},histLoaded=false,period="tudo",avalWhy="";
+const OBJ_NAME={ganhar:"Ganhar massa",manter:"Manter",perder:"Emagrecer"};
+async function loadHist(){
+  if(!S) return;
+  try{const h=await S.getKV("historico");if(h){hist={avaliacoes:h.avaliacoes||[],marcos:h.marcos||[]};}}catch(e){}
+  histLoaded=true;maybeRecordAval();renderBody();
+}
+function saveHist(){if(S&&histLoaded) S.setKV("historico",{...hist,ts:Date.now()}).catch(()=>{});}
+function addMarco(tipo,texto){hist.marcos.push({date:today(),tipo,texto,ts:Date.now()});saveHist();}
+function maybeRecordAval(){
+  const b=lastBody();
+  if(!histLoaded||!b||!profile||hist.avaliacoes.some(a=>a.bodyId===b.id)) return;
+  const A=avaliar();if(!A||A.erro) return;
+  hist.avaliacoes.push({bodyId:b.id,date:b.date,rec:A.rec,obj:A.obj,titulo:A.titulo,fonte:A.fonteCurta,objNaHora:profile.obj||"ganhar",aplicado:false,ts:Date.now()});
+  saveHist();
+}
+
+/* ---------- avaliação corporal ---------- */
+const bfBands=sx=>{const o=sx==="f"?8:0;return [[0,"Baixa","c-warn"],[8+o,"Boa","c-ok"],[20+o,"Atenção","c-warn"],[25+o,"Alta","c-bad"]];};
+const imcBands=[[0,"Abaixo","c-warn"],[18.5,"Normal","c-ok"],[25,"Sobrepeso","c-warn"],[30,"Obesidade","c-bad"]];
+const bandOf=(v,bands)=>{let r=bands[0];for(const b of bands) if(v>=b[0]) r=b;return r;};
+function selo(x){
+  if(x.gordura!=null){const b=bandOf(x.gordura,bfBands(profile?.sexo));return b;}
+  const h=(profile?.altura||0)/100;
+  if(x.peso!=null&&h){const b=bandOf(x.peso/(h*h),imcBands);return b;}
+  return null;
+}
+function avaliar(){
+  const p=profile;
+  if(!p||!p.altura) return {erro:"Preencha sua altura e idade em Ajustes para ver sua avaliação."};
+  const b=lastBody(), h=p.altura/100, peso=b?.peso??p.peso;
+  if(!peso) return {erro:"Lance seu peso em Nova medição para ver sua avaliação."};
+  const sx=p.sexo||"m", off=sx==="f"?8:0, imc=peso/(h*h);
+  const ratio=b?.cintura?b.cintura/p.altura:null;
+  const stats=[];
+  let rec,txt,fonte,fonteCurta,est=false,scale;
+  if(b?.gordura!=null){
+    const bf=b.gordura, v=b.visceral;
+    fonte="Baseada na "+(b.fonte==="Balança"?"medição":"bioimpedância")+" de "+fmtD(b.date);fonteCurta=b.fonte||"Bioimpedância";
+    if((v!=null&&v>=10)||bf>25+off){rec="perder";txt=v!=null&&v>=10?"Sua gordura visceral (a da barriga, em volta dos órgãos) está alta. A prioridade é baixar a gordura mantendo o músculo.":"Sua gordura está acima do ideal. O foco seria baixar a gordura mantendo o músculo.";}
+    else if(bf>20+off){rec="recomp";txt="Sua gordura está no limite da faixa boa. Dá para ganhar músculo e perder um pouco de gordura ao mesmo tempo, comendo perto do que você gasta e com bastante proteína.";}
+    else if(bf<10+off){rec="ganhar";txt="Sua gordura está baixa. Tem bastante espaço para ganhar massa muscular.";}
+    else{rec="ganhar";txt="Sua gordura está numa faixa boa. Dá para ganhar músculo sem acumular muita gordura.";}
+    const bb=bandOf(bf,bfBands(sx));stats.push(["Gordura",r1(bf).toLocaleString("pt-BR")+"%",bb[1],bb[2]]);
+    if(b.musculo!=null) stats.push(["Músculo",r1(b.musculo).toLocaleString("pt-BR")+" kg",rec==="perder"?"Manter":"Pode subir",rec==="perder"?"c-mut":"c-warn"]);
+    if(v!=null) stats.push(["Visceral",String(v),v>=10?"Alta":"Normal",v>=10?"c-bad":"c-ok"]);
+    scale={kind:"gordura",val:bf,min:0,max:40+off,bands:bfBands(sx)};
+  }else{
+    est=true;fonte=ratio!=null?"Estimativa por IMC e cintura":"Estimativa só por IMC (fraca)";fonteCurta=ratio!=null?"IMC e cintura":"IMC";
+    if(imc<18.5){rec="ganhar";txt="Seu peso está abaixo do ideal para sua altura. O foco é ganhar massa.";}
+    else if(imc<25){if(ratio!=null&&ratio>=0.5){rec="recomp";txt="Seu IMC está normal, mas a cintura está um pouco acima do ideal. Vale ganhar músculo e baixar um pouco a gordura da barriga.";}else{rec="ganhar";txt="Seu peso está normal para sua altura. Dá para ganhar massa com calma.";}}
+    else if(imc<30){if(ratio==null){rec="recomp";txt="Seu IMC está acima do normal, mas o IMC não separa músculo de gordura. Meça a cintura ou faça uma bioimpedância para ter certeza.";}else if(ratio<0.5){rec="manter";txt="Seu IMC está acima, mas a cintura está boa. Provavelmente é músculo. Dá para manter ou ganhar devagar.";}else{rec="perder";txt="Seu IMC está em sobrepeso e a cintura está acima do ideal para sua altura. O foco seria baixar a gordura mantendo o músculo.";}}
+    else{rec="perder";txt="Seu IMC está na faixa de obesidade. O foco é perder gordura com calma, mantendo o músculo.";}
+    scale={kind:"imc",val:imc,min:15,max:40,bands:imcBands};
+  }
+  const ib=bandOf(imc,imcBands);stats.push(["IMC",r1(imc).toLocaleString("pt-BR"),ib[1],ib[2]]);
+  if(ratio!=null) stats.push(["Cintura/altura",ratio.toFixed(2).replace(".",","),ratio<0.5?"Ok":ratio<0.6?"Acima":"Alta",ratio<0.5?"c-ok":ratio<0.6?"c-warn":"c-bad"]);
+  if(stats.length<3) stats.push(["Peso ideal",Math.round(18.5*h*h)+" a "+Math.round(24.9*h*h)+" kg","pela altura","c-mut"]);
+  const obj={ganhar:"ganhar",manter:"manter",recomp:"manter",perder:"perder"}[rec];
+  const titulo={ganhar:"Ganhar massa muscular",manter:"Manter o peso",recomp:"Recomposição: perder gordura e ganhar músculo",perder:"Perder gordura com calma"}[rec];
+  const T=targets({...p,peso,obj,kcal:null});
+  const ritmo={ganhar:"ganhar de 0,25 a 0,5 kg por semana",manter:"peso estável",recomp:"peso quase estável, com a cintura e a gordura caindo devagar",perder:"perder uns 0,5 kg por semana"}[rec];
+  return {rec,obj,titulo,txt,fonte,fonteCurta,est,stats,scale,T,ritmo,peso};
+}
+function scaleHtml(sc){
+  const span=sc.max-sc.min, cols=["#7FA6D6","#6DBE8A","#E3B04B","#E3846F"];
+  const stops=sc.bands.map((b,i)=>{const a=Math.max(0,(b[0]-sc.min)/span*100),z=i<sc.bands.length-1?(sc.bands[i+1][0]-sc.min)/span*100:100;return `${cols[i]} ${a.toFixed(1)}% ${z.toFixed(1)}%`}).join(",");
+  const pos=Math.min(98,Math.max(2,(sc.val-sc.min)/span*100));
+  return `<div><div class="hint" style="margin-bottom:6px">${sc.kind==="gordura"?"% de gordura ("+(profile?.sexo==="f"?"mulher":"homem")+")":"IMC"}</div><div class="scale" style="background:linear-gradient(90deg,${stops})"><i style="left:${pos}%"></i></div><div class="scalelbl">${sc.bands.map(b=>`<span>${b[1]}</span>`).join("")}</div></div>`;
+}
+function renderAval(){
+  const box=$("#aval"),A=avaliar();
+  if(A.erro){box.innerHTML=`<p class="empty">${esc(A.erro)}</p>`;return;}
+  const cur=profile.obj||"ganhar", same=cur===A.obj;
+  box.innerHTML=`<span class="src ${A.est?"est":""}">${esc(A.fonte)}</span>
+    <div class="verdict ${A.rec==="perder"||A.rec==="recomp"?"warn":""}"><span class="hint">Recomendação</span><span class="big">${esc(A.titulo)}</span><span style="font-size:.88rem">${esc(A.txt)}</span></div>
+    ${scaleHtml(A.scale)}
+    <div class="astats">${A.stats.map(s=>`<div class="st"><div class="l">${esc(s[0])}</div><div class="v">${esc(s[1])}</div><div class="s ${s[3]}">${esc(s[2])}</div></div>`).join("")}</div>
+    ${same?`<p class="hint c-ok" style="font-weight:600">Seu objetivo atual (${esc(OBJ_NAME[cur])}) já está de acordo.</p>`:`<div class="conflict"><b>Atenção:</b> seu objetivo hoje é <b>${esc(OBJ_NAME[cur])}</b>. Pelos números, faria mais sentido <b>${esc(OBJ_NAME[A.obj])}</b>${A.rec==="recomp"?" (comendo perto do que gasta, com bastante proteína)":""}. Você decide.</div>`}
+    <div><b style="font-size:.9rem">Plano sugerido</b><ul class="plan">
+      ${A.T?`<li>Calorias: <b class="num">${A.T.kcal.toLocaleString("pt-BR")} kcal</b> por dia</li><li>Proteína: <b class="num">${A.T.prot} g</b> por dia</li>`:""}
+      <li>Ritmo bom: ${esc(A.ritmo)}</li>
+      <li>${A.est?"Faça uma bioimpedância para confirmar":"Refazer a bioimpedância em 6 a 8 semanas"}</li></ul></div>
+    ${A.est?`<p class="hint" style="background:var(--warnsoft);padding:8px;border-radius:8px;color:var(--ink)">O IMC não separa músculo de gordura. Quem treina pode dar "sobrepeso" sem ter gordura sobrando.</p>`:""}
+    <div class="row">${same?"":`<button class="primary" id="avalApply">Usar como meu objetivo</button>`}<button id="avalWhyBtn">Ver por que</button><span class="hint" id="avalMsg"></span></div>
+    <div class="md" id="avalWhy">${avalWhy?md(avalWhy):""}</div>
+    <p class="hint">Orientação geral. Não substitui sua nutricionista.</p>`;
+}
+$("#aval").addEventListener("click",async e=>{
+  if(e.target.id==="avalApply"){
+    const A=avaliar();if(!A||A.erro||!S)return;
+    e.target.disabled=true;
+    try{
+      await S.setProfile({...profile,obj:A.obj,updated:Date.now()});
+      addMarco("objetivo","Objetivo: "+OBJ_NAME[A.obj]);
+      const last=hist.avaliacoes[hist.avaliacoes.length-1];
+      if(last&&last.bodyId===lastBody()?.id){last.aplicado=true;saveHist();}
+    }catch(err){e.target.disabled=false;$("#avalMsg").textContent="Não salvou. Tente de novo.";}
+  }
+  if(e.target.id==="avalWhyBtn"){
+    if(!AI){$("#avalMsg").textContent="Indisponível aqui.";return;}
+    const A=avaliar();e.target.disabled=true;$("#avalWhy").innerHTML=`<p class="empty">Pensando...</p>`;
+    const prompt=`Você é a nutricionista do paciente. ${profileText()}
+O app calculou esta avaliação: recomendação "${A.titulo}". Motivo: ${A.txt} Dados usados: ${A.stats.map(s=>s[0]+" "+s[1]+" ("+s[2]+")").join(", ")}. Fonte: ${A.fonte}.
+Explique em até 8 linhas, em palavras simples, por que essa é a recomendação, o que cada número quer dizer e o que ele pode fazer na prática nas próximas semanas. Se a recomendação for diferente do objetivo atual dele, explique com cuidado os prós e contras de cada caminho, sem impor. ${STYLE}`;
+    try{avalWhy=await AI.text(prompt,{onText:t=>{const el=$("#avalWhy");if(el)el.innerHTML=md(t);}});$("#avalWhy").innerHTML=md(avalWhy);}
+    catch(err){$("#avalWhy").innerHTML=`<p class="empty">${esc(errMsg(err))}</p>`;}
+    const bt=$("#avalWhyBtn");if(bt)bt.disabled=false;
+  }
+});
+function renderAvalHist(){
+  const ids=new Set(body.map(b=>b.id));
+  const list=hist.avaliacoes.filter(a=>ids.has(a.bodyId)).slice().sort((a,b)=>a.date<b.date?1:-1);
+  if(!list.length){$("#avalHist").innerHTML=`<p class="empty">Cada medição nova gera uma avaliação, que fica guardada aqui.</p>`;return;}
+  $("#avalHist").innerHTML=list.map(a=>{
+    const note=a.aplicado?"Você passou a usar essa recomendação.":a.objNaHora===a.obj?"Já estava de acordo com seu objetivo.":"Seu objetivo na época: "+(OBJ_NAME[a.objNaHora]||a.objNaHora)+".";
+    return `<div class="e"><span class="dot ${a.objNaHora===a.obj||a.aplicado?"":"w"}"></span><div><b>${fmtD(a.date)}</b> · ${esc(a.titulo)}<br><span class="hint">${esc(note)} Fonte: ${esc(a.fonte||"")}.</span></div></div>`;
+  }).join("");
+}
+
 /* ---------- corpo ---------- */
 const METRICS=[["peso","Peso","kg"],["musculo","Massa muscular","kg"],["gordura","Gordura","%"],["mgorda","Massa gorda","kg"]];
 function renderBody(){
@@ -653,27 +837,48 @@ function renderBody(){
   };
   const gUp=profile?.obj!=="perder";
   $("#bodyStats").innerHTML=stat("peso","Peso","kg",gUp)+stat("musculo","Músculo","kg",true)+stat("gordura","Gordura","%",false);
+  // desde o início
+  if(body.length>1){
+    const f=body[0],l=body[body.length-1],dias=Math.max(1,(parse(l.date)-parse(f.date))/864e5),sem=dias/7;
+    const dl=(k,u,goodUp)=>{if(f[k]==null||l[k]==null)return null;const x=r1(l[k]-f[k]);const cls=x===0?"":((x>0)===goodUp?"c-ok":"c-bad");return `<span class="${cls}">${x>0?"+":x<0?"−":""}${Math.abs(x).toLocaleString("pt-BR")}${u}</span>`;};
+    const parts=[dl("musculo"," kg",true)&&dl("musculo"," kg",true)+" de músculo",dl("gordura","%",false)&&dl("gordura","%",false)+" de gordura"].filter(Boolean);
+    const rit=f.peso!=null&&l.peso!=null?(l.peso-f.peso)/sem:null;
+    const obj=profile?.obj||"ganhar";
+    const ritOk=rit==null?null:obj==="ganhar"?(rit>=0.1&&rit<=0.5):obj==="perder"?(rit<=-0.25&&rit>=-1):(Math.abs(rit)<=0.25);
+    $("#bodySince").innerHTML=`<div class="since"><span class="eyebrow">Desde o início (${fmtD(f.date)}, ${sem>=2?Math.round(sem)+" semanas":Math.round(dias)+" dias"})</span>
+      ${parts.length?`<span class="big">${parts.join(" · ")}</span>`:""}
+      ${f.peso!=null&&l.peso!=null?`<span class="hint">Peso: ${r1(f.peso).toLocaleString("pt-BR")} → ${r1(l.peso).toLocaleString("pt-BR")} kg (${dl("peso"," kg",obj!=="perder")}).${sem>=2?` Ritmo de ${rit>0?"+":""}${r1(rit).toLocaleString("pt-BR")} kg por semana${ritOk==null?"":ritOk?", dentro do ideal":", fora do ritmo ideal para seu objetivo"}.`:""}</span>`:""}</div>`;
+  }else $("#bodySince").innerHTML="";
+  $("#bodyPeriod").innerHTML=body.length>2?[["30","30 dias"],["90","3 meses"],["tudo","Tudo"]].map(([k,l])=>`<button type="button" data-p="${k}" aria-pressed="${k===period}">${l}</button>`).join(""):"";
   const avail=METRICS.filter(([k])=>body.some(x=>x[k]!=null));
   if(!avail.find(m=>m[0]===metric)) metric=avail[0]?.[0]||"peso";
   $("#bodyMetric").innerHTML=avail.length>1?avail.map(([k,l])=>`<button type="button" data-m="${k}" aria-pressed="${k===metric}">${l}</button>`).join(""):"";
-  renderChart();
+  renderChart();renderAval();renderAvalHist();
   $("#bodyList").innerHTML=body.slice().reverse().map(x=>{
+    const sl=selo(x);
     const parts=[x.peso!=null&&x.peso+" kg",x.gordura!=null&&x.gordura+"% gord.",x.musculo!=null&&x.musculo+" kg músc.",x.visceral!=null&&"visceral "+x.visceral].filter(Boolean).join(" · ");
-    return `<div class="it"><span><b>${fmtD(x.date)}</b> <span class="stamp">${esc(x.fonte||"")}</span><br><span class="num">${esc(parts)}</span>${x.obs?`<br><span class="stamp">${esc(x.obs)}</span>`:""}</span><button class="del" data-bdel="${esc(x.id)}">Apagar</button></div>`;
+    return `<div class="it"><span><b>${fmtD(x.date)}</b> <span class="stamp">${esc(x.fonte||"")}</span><br><span class="num">${esc(parts)}</span>${x.obs?`<br><span class="stamp">${esc(x.obs)}</span>`:""}</span><span class="row" style="gap:6px;flex-wrap:nowrap">${sl?`<span class="pill ${sl[2]}">${sl[1]}</span>`:""}<button class="del" data-bdel="${esc(x.id)}">Apagar</button></span></div>`;
   }).join("")||`<p class="empty">Nenhuma medição ainda. Lance seu peso de hoje em "Nova medição" ou me mande o resultado da bioimpedância que eu salvo aqui.</p>`;
 }
 function renderChart(){
-  const pts=body.filter(x=>x[metric]!=null).map(x=>({t:parse(x.date).getTime(),v:Number(x[metric]),d:x.date}));
+  const desde=period==="tudo"?"":addDays(today(),-Number(period));
+  const pts=body.filter(x=>x[metric]!=null&&x.date>=desde).map(x=>({t:parse(x.date).getTime(),v:Number(x[metric]),d:x.date}));
   const box=$("#bodyChart");
-  if(pts.length<2){box.innerHTML=pts.length?`<p class="hint">O gráfico aparece a partir da segunda medição.</p>`:"";return;}
+  if(pts.length<2){box.innerHTML=pts.length||period!=="tudo"?`<p class="hint">${period!=="tudo"?"Menos de duas medições nesse período. Escolha um período maior.":"O gráfico aparece a partir da segunda medição."}</p>`:"";return;}
+  let band=null;const hh=(profile?.altura||0)/100;
+  if(metric==="gordura"){const o=profile?.sexo==="f"?8:0;band=[8+o,20+o];}
+  else if(metric==="peso"&&hh) band=[r1(18.5*hh*hh),r1(24.9*hh*hh)];
   const W=600,H=210,L=58,R=14,Tp=16,B=34;
   let mn=Math.min(...pts.map(p=>p.v)),mx=Math.max(...pts.map(p=>p.v));
   const pad=Math.max((mx-mn)*0.25,0.5);mn-=pad;mx+=pad;
+  if(band&&metric==="gordura"){mn=Math.min(mn,band[0]-1);mx=Math.max(mx,band[1]+1);}
   const t0=pts[0].t,t1=pts[pts.length-1].t||t0+1;
   const X=t=>L+(t1===t0?0.5:(t-t0)/(t1-t0))*(W-L-R), Y=v=>Tp+(1-(v-mn)/(mx-mn))*(H-Tp-B);
   const unit=METRICS.find(m=>m[0]===metric)[2];
   let g="";
   for(let i=0;i<=3;i++){const v=mn+(mx-mn)*i/3;const y=Y(v);g+=`<line class="gl" x1="${L}" x2="${W-R}" y1="${y}" y2="${y}"/><text class="tx" x="${L-6}" y="${y+4}" text-anchor="end">${r1(v)}</text>`;}
+  if(band){const y1=Y(Math.min(mx,band[1])),y2=Y(Math.max(mn,band[0]));if(y2>y1) g+=`<rect class="band" x="${L}" y="${y1}" width="${W-L-R}" height="${y2-y1}"/><text class="bandt" x="${W-R-6}" y="${y1+17}" text-anchor="end">faixa boa</text>`;}
+  hist.marcos.filter(m=>{const t=parse(m.date).getTime();return t>=t0&&t<=t1;}).slice(-4).forEach(m=>{const x=X(parse(m.date).getTime());g+=`<line class="mk" x1="${x}" x2="${x}" y1="${Tp}" y2="${H-B}"/><text class="mkt" x="${Math.min(x+5,W-R-90)}" y="${Tp+13}">${esc(m.tipo==="dieta"?"dieta nova":m.texto.replace("Objetivo: ","").toLowerCase())}</text>`;});
   const line=pts.map(p=>`${X(p.t).toFixed(1)},${Y(p.v).toFixed(1)}`).join(" ");
   const area=`${X(pts[0].t)},${H-B} ${line} ${X(pts[pts.length-1].t)},${H-B}`;
   const f=pts[0],l=pts[pts.length-1];
@@ -683,6 +888,7 @@ function renderChart(){
     <text class="tx" x="${L}" y="${H-6}">${fmtD(f.d)}</text><text class="tx" x="${W-R}" y="${H-6}" text-anchor="end">${fmtD(l.d)} · ${r1(l.v)} ${unit}</text></svg>`;
 }
 $("#bodyMetric").addEventListener("click",e=>{const b=e.target.closest("[data-m]");if(!b)return;metric=b.dataset.m;renderBody();});
+$("#bodyPeriod").addEventListener("click",e=>{const b=e.target.closest("[data-p]");if(!b)return;period=b.dataset.p;renderBody();});
 $("#bData").value=today();
 $("#bodyForm").addEventListener("submit",async e=>{
   e.preventDefault();
@@ -728,9 +934,9 @@ $("#profileForm").addEventListener("input",showTargets);
 $("#profileForm").addEventListener("submit",async e=>{
   e.preventDefault();
   if(!S){$("#pfMsg").textContent="Sem onde salvar ainda.";return;}
-  const p=formProfile();p.updated=Date.now();
+  const p=formProfile();p.updated=Date.now();const objAntes=profile?.obj;
   $("#pfSave").disabled=true;$("#pfMsg").textContent="Salvando...";
-  try{await S.setProfile(p);$("#pfMsg").textContent="Perfil salvo.";}catch(err){$("#pfMsg").textContent="Não salvou. Tente de novo.";}
+  try{await S.setProfile(p);$("#pfMsg").textContent="Perfil salvo.";if(objAntes&&objAntes!==p.obj)addMarco("objetivo","Objetivo: "+OBJ_NAME[p.obj]);}catch(err){$("#pfMsg").textContent="Não salvou. Tente de novo.";}
   $("#pfSave").disabled=false;
 });
 
@@ -944,7 +1150,7 @@ async function loadSaved(){
   $("#nutriOut").innerHTML=`<p class="empty">Quando pedir uma análise, ela aparece aqui e fica salva para você rever.</p>`;$("#nutriStamp").textContent="";
   if(!S) return;
   try{
-    const [d,w]=await Promise.all([S.getKV("dia-"+sel),S.getKV("semana-"+sel)]);
+    const [d,w]=await Promise.all([S.getKV("dia-"+sel),S.getKV("semana-"+weekStart(sel))]);
     const pick=[d,w].filter(Boolean).sort((a,b)=>b.ts-a.ts)[0];
     if(pick){$("#nutriStamp").textContent=stampTxt(pick.kind==="semana"?"Análise da semana":"Análise do dia",pick.ts);$("#nutriOut").innerHTML=md(pick.text);}
   }catch(e){}
@@ -955,13 +1161,13 @@ async function loadDiet(){
 }
 async function runNutri(kind){
   if(!AI){$("#nutriOut").innerHTML=`<p class="empty">Análise indisponível aqui.</p>`;return;}
-  const days=kind==="semana"?[...Array(7)].map((_,i)=>addDays(sel,i-6)):[sel];
+  const days=kind==="semana"?weekDays(sel).filter(d=>d<=today()):[sel];
   if(!days.some(d=>dayMeals(d).length)){$("#nutriOut").innerHTML=`<p class="empty">Não tem refeição lançada ${kind==="semana"?"nessa semana":"nesse dia"} ainda.</p>`;return;}
   const btns=[$("#dayBtn"),$("#weekBtn")];btns.forEach(b=>b.disabled=true);
   $("#nutriStamp").textContent="";$("#nutriOut").innerHTML=`<p class="empty">Pensando...</p>`;
   const isToday=sel===today();
   const prompt=`Você é a nutricionista do paciente e está acompanhando o diário alimentar dele. ${profileText()}
-${kind==="semana"?"Analise a SEMANA abaixo (7 dias).":"Analise o DIA abaixo."+(isToday?` O dia ainda está em andamento, agora são ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}.`:"")}
+${kind==="semana"?"Analise a SEMANA abaixo (de segunda a domingo)."+(weekDays(sel).includes(today())?" A semana ainda está em andamento, os dias que faltam não entram na conta.":""):"Analise o DIA abaixo."+(isToday?` O dia ainda está em andamento, agora são ${new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}.`:"")}
 
 ${days.map(dayText).join("\n\n")}
 
@@ -977,7 +1183,7 @@ ${STYLE} Não repita os números de cada refeição, foque no que importa.`;
     const text=await AI.text(prompt,{onText:t=>{$("#nutriOut").innerHTML=md(t);}});
     const a={kind,text,ts:Date.now(),date:sel};
     $("#nutriStamp").textContent=stampTxt(kind==="semana"?"Análise da semana":"Análise do dia",a.ts);$("#nutriOut").innerHTML=md(text);
-    S?.setKV(`${kind}-${sel}`,a).catch(()=>{});
+    S?.setKV(`${kind}-${kind==="semana"?weekStart(sel):sel}`,a).catch(()=>{});
   }catch(e){
     $("#nutriOut").innerHTML=(e?.text?md(e.text)+`<p class="empty">(interrompida)</p>`:"")+`<p class="empty">${esc(errMsg(e))}</p>`;
   }
@@ -1016,7 +1222,7 @@ ${STYLE}`;
     const text=await AI.text(prompt,{onText:t=>{$("#dietOut").innerHTML=md(t);},long:true});
     const d={text,ts:Date.now()};
     $("#dietStamp").textContent=stampTxt("Dieta",d.ts);$("#dietOut").innerHTML=md(text);$("#dietBtn").textContent="Gerar nova dieta";
-    S?.setKV("dieta",d).catch(()=>{});
+    S?.setKV("dieta",d).catch(()=>{});addMarco("dieta","Dieta nova");
     $("#dietMsg").textContent="Dieta salva.";
   }catch(e){
     $("#dietOut").innerHTML=(e?.text?md(e.text)+`<p class="empty">(interrompida)</p>`:"");$("#dietMsg").textContent=errMsg(e);
@@ -1044,7 +1250,7 @@ showTab(curTab);
 function subscribe(){
   unsub?.();unsub=null;
   if(!S) return;
-  unsub=S.onMeals(addDays(sel,-6),sel,list=>{meals=list;render();},()=>{$("#conn").textContent="Não consegui ler seus dados agora. Recarregue a página.";});
+  unsub=S.onMeals(weekStart(sel),(addDays(weekStart(sel),6)>today()?addDays(weekStart(sel),6):today()),list=>{meals=list;render();},()=>{$("#conn").textContent="Não consegui ler seus dados agora. Recarregue a página.";});
   loadSaved();
 }
 $("#prev").addEventListener("click",()=>{sel=addDays(sel,-1);subscribe();render();});
@@ -1063,10 +1269,10 @@ render();fillProfile();
     profile=p;
     if(!document.activeElement?.closest("#profileForm")) fillProfile();
     if(!profile&&!everHadTab) showTab("ajustes");
-    render();
+    maybeRecordAval();render();
   });
-  S.onBody(list=>{body=list.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));render();showTargets();});
-  subscribe();loadDiet();loadChat();render();
+  S.onBody(list=>{body=list.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0));maybeRecordAval();render();showTargets();});
+  subscribe();loadDiet();loadChat();loadHist();render();
 })();
 </script>
 
