@@ -233,6 +233,14 @@ details .form{margin-top:12px}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:20;max-width:calc(100% - 32px);transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:.6em 1.1em;border-radius:99px;font-size:.9rem;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);transition:opacity .25s,transform .3s var(--ease)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.bad{background:var(--bad);color:var(--accent-ink)}
+.toast.act{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:16px;width:min(360px,calc(100% - 32px))}
+.toast.act.show{pointer-events:auto}
+.toast button{border:none;background:none;color:inherit;padding:.2em .2em;font-weight:700;text-decoration:underline;flex:none}
+/* ajustar dieta e o que a nutri sabe */
+.adjust{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.adjust h2{font-size:1rem}
+.tag{display:inline-flex;align-items:center;gap:2px;background:var(--soft);color:var(--ink);border-radius:99px;padding:.25em .25em .25em .8em;font-size:.86rem;max-width:100%;overflow-wrap:anywhere}
+.tag button{border:none;background:none;padding:0 .45em;color:var(--muted);font-size:1.1rem;line-height:1}
 /* entrada das abas e das barras */
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 [data-tab].on{animation:rise .34s var(--ease) both;animation-delay:calc(var(--i,0) * 45ms)}
@@ -419,6 +427,11 @@ details .form{margin-top:12px}
     </div>
     <div class="stamp" id="dietStamp"></div>
     <div class="md" id="dietOut"><p class="empty">Nenhuma dieta gerada ainda.</p></div>
+    <div id="dietAdjust" class="adjust" hidden>
+      <label for="dietAsk"><b>Quer mudar algo?</b> <span class="hint">Peça uma troca e a nutri refaz a dieta. Se for um gosto seu, ela anota no seu perfil.</span></label>
+      <textarea id="dietAsk" style="min-height:56px" placeholder="Ex.: não como fruta / troca o jantar por algo mais rápido"></textarea>
+      <div class="row"><button class="primary" id="dietAskBtn">Ajustar dieta</button><button id="dietAskStop" hidden>Parar</button><span class="hint" id="dietAskMsg"></span></div>
+    </div>
   </section>
 
   <section class="panel" data-tab="ajustes" id="profileBox" aria-label="Perfil e metas">
@@ -446,6 +459,12 @@ details .form{margin-top:12px}
         <p class="full hint" id="targetsNote"></p>
         <div class="full row"><button class="primary" type="submit" id="pfSave">Salvar perfil</button><span class="hint" id="pfMsg"></span></div>
       </form>
+    </div>
+    <div class="adjust">
+      <h2>O que a nutri já sabe sobre você</h2>
+      <p class="hint">Gostos e restrições que ela leva em conta na dieta, no chat e nas análises. Toque no × para apagar.</p>
+      <div class="chips" id="sabeList"></div>
+      <form class="row" id="sabeForm"><input id="sabeIn" autocomplete="off" maxlength="80" placeholder="Ex.: não como peixe" style="flex:1 1 180px"><button type="submit">Adicionar</button></form>
     </div>
   </section>
   <section class="panel" id="settings" data-tab="ajustes" aria-label="Configurações">
@@ -634,10 +653,12 @@ const errMsg=e=>ERR[e?.code]||"Não consegui agora. Tente de novo.";
 /* ---------- toques de app ---------- */
 const calmo=matchMedia("(prefers-reduced-motion: reduce)").matches;
 let toastT=null;
-function toast(msg,kind){
-  const el=$("#toast");el.textContent=msg;el.className="toast "+(kind||"");
+// act = {label, fn}: mostra um botão no aviso (ex.: Desfazer) e deixa o aviso mais tempo na tela
+function toast(msg,kind,act){
+  const el=$("#toast");el.textContent=msg;el.className="toast "+(kind||"")+(act?" act":"");
+  if(act){const b=document.createElement("button");b.type="button";b.textContent=act.label;b.onclick=()=>{el.classList.remove("show");act.fn();};el.append(b);}
   void el.offsetWidth;el.classList.add("show");
-  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove("show"),2600);
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove("show"),act?7000:2600);
 }
 const skel=(n=4,txt)=>`<div class="skel" role="status">${txt?`<p class="hint">${esc(txt)}</p>`:""}${[...Array(n)].map((_,i)=>`<i style="width:${[94,80,88,62,72][i%5]}%"></i>`).join("")}</div>`;
 const DOTS=`<span class="dots" role="status" aria-label="Pensando"><i></i><i></i><i></i></span>`;
@@ -670,6 +691,23 @@ function targets(p){
 }
 const sumItems=items=>items.reduce((a,i)=>({kcal:a.kcal+r0(i.kcal),prot:a.prot+r0(i.prot),carb:a.carb+r0(i.carb),gord:a.gord+r0(i.gord),acucar:a.acucar+r0(i.acucar)}),{kcal:0,prot:0,carb:0,gord:0,acucar:0});
 const dayMeals=d=>meals.filter(m=>m.date===d).sort((a,b)=>a.ts-b.ts);
+// meta de um dia: hoje usa a meta atual; dias passados usam a meta guardada nas refeições daquele dia
+// (campo "meta", gravado ao salvar). Refeições antigas sem esse campo usam a meta atual.
+const metaOf=T=>T?{kcal:T.kcal,prot:T.prot,carb:T.carb,gord:T.gord,acucar:T.acucar}:null;
+function dayTarget(d,T){
+  if(d>=today()) return T;
+  const ms=dayMeals(d).filter(m=>m.meta&&Number(m.meta.kcal)>0);
+  return ms.length?ms[ms.length-1].meta:T;
+}
+// se a meta mudar durante o dia, as refeições de hoje passam a guardar a meta nova
+let metaSyncKey="";
+const sameMeta=(a,b)=>!!a&&!!b&&["kcal","prot","carb","gord","acucar"].every(k=>Number(a[k])===Number(b[k]));
+function syncTodayMeta(Tnow){
+  const m=metaOf(Tnow);if(!S||!m) return;
+  const list=dayMeals(today());
+  const k=today()+":"+Object.values(m).join(",")+":"+list.map(x=>x.id).join(",");if(k===metaSyncKey) return;metaSyncKey=k;
+  list.forEach(x=>{if(!sameMeta(x.meta,m)) S.updateMeal(x.id,{meta:m}).catch(()=>{});});
+}
 const dayTot=d=>dayMeals(d).reduce((a,m)=>{const t=sumItems(m.items||[]);return{kcal:a.kcal+t.kcal,prot:a.prot+t.prot,carb:a.carb+t.carb,gord:a.gord+t.gord,acucar:a.acucar+t.acucar}},{kcal:0,prot:0,carb:0,gord:0,acucar:0});
 
 /* ---------- render ---------- */
@@ -680,7 +718,8 @@ function dateLabel(s){
 }
 const pct=(a,b)=>b?Math.min(100,a/b*100):0;
 function render(){
-  const T=targets(profile), t=dayTot(sel);
+  const Tnow=targets(profile), T=dayTarget(sel,Tnow), t=dayTot(sel);
+  syncTodayMeta(Tnow);
   $("#dateLabel").textContent=dateLabel(sel);
   $("#next").disabled=sel>=today();
   $("#mealsTitle").textContent=sel===today()?"Refeições de hoje":"Refeições de "+dateLabel(sel).toLowerCase();
@@ -710,28 +749,28 @@ function render(){
   $("#aBar").style.width=pct(t.acucar,T?.acucar)+"%";
   $("#sugarBox").classList.toggle("over",!!T&&t.acucar>T.acucar);
   $("#statusChips").innerHTML=chips.map(([c,l])=>`<span class="chip ${c}">${esc(l)}</span>`).join("");
-  renderWeek(T);renderMeals();renderMealPick();renderPreview();renderBody();renderAsk();
+  renderWeek(T,Tnow);renderMeals();renderMealPick();renderPreview();renderBody();renderAsk();
 }
-function renderWeek(T){
-  const days=weekDays(sel), t0=today();
+function renderWeek(T,Tnow){
+  const days=weekDays(sel), t0=today(), Td=days.map(d=>dayTarget(d,Tnow));
   const a=parse(days[0]),b=parse(days[6]);
   $("#weekTitle").textContent=days.includes(t0)?"Esta semana":("Semana de "+a.getDate()+(a.getMonth()!==b.getMonth()?" "+MON[a.getMonth()]:"")+" a "+b.getDate()+" "+MON[b.getMonth()]);
   const tots=days.map(d=>dayTot(d));
   const vals=tots.map(x=>x.kcal);
-  const max=Math.max(T?.kcal*1.25||0,...vals,1);
+  const max=Math.max(...Td.map(m=>m?m.kcal*1.25:0),...vals,1);
   let html=days.map((d,i)=>{
-    const v=vals[i], fut=d>t0, h=Math.max(2,v/max*84);
-    const cls=fut?"fut":!v?"":T&&v>T.kcal*1.15?"over":T&&v>=T.kcal*0.9?"hit":T?"low":"";
+    const v=vals[i], fut=d>t0, h=Math.max(2,v/max*84), M=Td[i];
+    const cls=fut?"fut":!v?"":M&&v>M.kcal*1.15?"over":M&&v>=M.kcal*0.9?"hit":M?"low":"";
     return `<button type="button" class="col" data-day="${d}" title="${esc(dateLabel(d))}: ${v} kcal"><div class="bar ${cls} ${d===sel?"sel":""}" style="height:${h}px"></div><div class="d">${DOW[parse(d).getDay()]}<b>${v?v.toLocaleString("pt-BR"):"&nbsp;"}</b></div></button>`;
   }).join("");
   if(T) html+=`<div class="goal-line" style="bottom:${T.kcal/max*84+32}px"><span class="num">${T.kcal}</span></div>`;
   $("#week").innerHTML=html;
   // as barras só crescem com animação quando a semana muda, não a cada dado salvo
   const wk=days[0]+(T?"t":"");$("#week").classList.toggle("anim",wk!==weekAnimKey&&meals.length>0);if(meals.length)weekAnimKey=wk;
-  const withData=days.map((d,i)=>({d,t:tots[i]})).filter(x=>x.d<=t0&&x.t.kcal>0);
+  const withData=days.map((d,i)=>({d,t:tots[i],M:Td[i]})).filter(x=>x.d<=t0&&x.t.kcal>0);
   if(!withData.length){$("#weekSum").innerHTML=`<p class="hint" style="grid-column:1/-1">Nenhuma refeição lançada nessa semana.</p>`;return;}
   const avg=k=>Math.round(withData.reduce((s,x)=>s+x.t[k],0)/withData.length);
-  const hits=T?withData.filter(x=>x.t.kcal>=T.kcal*0.9&&x.t.kcal<=T.kcal*1.15).length:null;
+  const hits=Tnow?withData.filter(x=>x.M&&x.t.kcal>=x.M.kcal*0.9&&x.t.kcal<=x.M.kcal*1.15).length:null;
   $("#weekSum").innerHTML=`<div><b>${avg("kcal").toLocaleString("pt-BR")}</b><span>média kcal/dia</span></div><div><b>${hits==null?"…":hits+" de "+withData.length}</b><span>dias na meta</span></div><div><b>${avg("prot")} g</b><span>média proteína</span></div>`;
 }
 $("#week").addEventListener("click",e=>{const b=e.target.closest("[data-day]");if(!b)return;const d=b.dataset.day;if(d>today()||d===sel)return;sel=d;subscribe();render();});
@@ -1021,13 +1060,46 @@ $("#profileForm").addEventListener("submit",async e=>{
   $("#pfSave").disabled=false;
 });
 
+/* ---------- o que a nutri já sabe (campo novo do perfil: nutriSabe, lista de textos) ---------- */
+const sabeList=()=>Array.isArray(profile?.nutriSabe)?profile.nutriSabe.filter(x=>typeof x==="string"&&x.trim()):[];
+async function addSabe(items){
+  if(!S) return [];
+  const cur=sabeList(),low=cur.map(x=>x.toLowerCase()),add=[];
+  items.map(x=>String(x).trim()).forEach(x=>{if(x&&!low.includes(x.toLowerCase())){add.push(x);low.push(x.toLowerCase());}});
+  if(!add.length) return [];
+  await S.setProfile({...(profile||{}),nutriSabe:[...cur,...add],updated:Date.now()});
+  return add;
+}
+async function removeSabe(items){
+  if(!S) return;
+  const rm=items.map(x=>x.toLowerCase());
+  await S.setProfile({...(profile||{}),nutriSabe:sabeList().filter(x=>!rm.includes(x.toLowerCase())),updated:Date.now()});
+}
+function renderSabe(){
+  const l=sabeList();
+  $("#sabeList").innerHTML=l.length?l.map((x,i)=>`<span class="tag">${esc(x)}<button type="button" data-sabe="${i}" aria-label="Apagar ${esc(x)}">×</button></span>`).join(""):`<p class="empty">Nada anotado ainda. Quando você pedir uma troca na dieta, a nutri anota aqui o que você não come ou prefere.</p>`;
+}
+$("#sabeList").addEventListener("click",async e=>{
+  const b=e.target.closest("[data-sabe]");if(!b)return;
+  const item=sabeList()[Number(b.dataset.sabe)];if(!item)return;
+  b.disabled=true;
+  try{await removeSabe([item]);toast("Apagado: "+item,"",{label:"Desfazer",fn:()=>addSabe([item]).catch(()=>{})});}catch(err){b.disabled=false;toast("Não apagou. Tente de novo.","bad");}
+});
+$("#sabeForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const v=$("#sabeIn").value.trim();if(!v)return;
+  if(!S){toast("Sem onde salvar ainda.","bad");return;}
+  try{const a=await addSabe([v]);$("#sabeIn").value="";toast(a.length?"Anotado no seu perfil":"Isso já estava anotado");}catch(err){toast("Não salvou. Tente de novo.","bad");}
+});
+
 /* ---------- contexto para a IA ---------- */
 function profileText(){
   const p=profile||{},T=targets(p),b=lastBody();
   const obj={ganhar:"ganhar massa muscular",manter:"manter o peso",perder:"emagrecer"}[p.obj||"ganhar"];
   let s=`Paciente: ${p.sexo==="f"?"mulher":"homem"}, ${p.idade||"?"} anos, ${p.altura||"?"} cm, ${p.peso||"?"} kg. Objetivo: ${obj}.`+
     (T?` Metas diárias: ${T.kcal} kcal, ${T.prot} g proteína, ${T.carb} g carbo, ${T.gord} g gordura.`:" Metas ainda não definidas.")+
-    (p.refeicoes?` Costuma fazer ${p.refeicoes} refeições por dia.`:"")+(p.obs?` Observações: ${p.obs}.`:"");
+    (p.refeicoes?` Costuma fazer ${p.refeicoes} refeições por dia.`:"")+(p.obs?` Observações: ${p.obs}.`:"")+
+    (sabeList().length?`\nO que já sabemos dele (respeite sempre, não sugira o que ele não come): ${sabeList().join("; ")}.`:"");
   if(b){
     const f=[["peso","peso","kg"],["gordura","gordura","%"],["musculo","massa muscular","kg"],["magra","massa magra","kg"],["mgorda","massa gorda","kg"],["agua","água","%"],["visceral","gordura visceral",""],["tmb","taxa metabólica","kcal"],["cintura","cintura","cm"],["braco","braço","cm"]];
     s+=`\nÚltima medição (${b.date}, ${b.fonte||""}): `+f.filter(([k])=>b[k]!=null).map(([k,l,u])=>`${l} ${b[k]}${u?" "+u:""}`).join(", ")+".";
@@ -1038,8 +1110,9 @@ function profileText(){
 function dayText(d){
   const list=dayMeals(d);
   if(!list.length) return `${d}: nada lançado.`;
-  const t=dayTot(d);
-  return `${d} (total ${t.kcal} kcal, P ${t.prot} g, C ${t.carb} g, G ${t.gord} g, açúcar adicionado ${t.acucar} g):\n`+list.map(m=>{
+  const t=dayTot(d),Tnow=targets(profile),M=dayTarget(d,Tnow);
+  const metaDia=M&&Tnow&&!sameMeta(M,metaOf(Tnow))?` [a meta nesse dia era outra: ${M.kcal} kcal e ${M.prot} g de proteína]`:"";
+  return `${d} (total ${t.kcal} kcal, P ${t.prot} g, C ${t.carb} g, G ${t.gord} g, açúcar adicionado ${t.acucar} g)${metaDia}:\n`+list.map(m=>{
     const hr=new Date(m.ts).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
     return `- ${MEAL_NAME[m.meal]} ${hr}: `+(m.items||[]).map(i=>`${i.nome}${i.porcao?" "+i.porcao:""} (${r0(i.kcal)} kcal, P${r0(i.prot)}${r0(i.acucar)?", açúcar "+r0(i.acucar)+" g":""})`).join("; ");
   }).join("\n");
@@ -1102,6 +1175,8 @@ $("#preview").addEventListener("click",async e=>{
     if(pending.saving) return;
     pending.saving=true;renderPreview();
     const tv=$("#mealTime").value;const doc={date:sel,ts:tv?tsFor(sel,tv):(sel===today()?Date.now():parse(sel).getTime()+12*3600e3),meal:selMeal,text:pending.text??$("#mealText").value.trim(),items:pending.items,tot:sumItems(pending.items),comentario:pending.comentario||"",sinal:pending.sinal||"",foto:!!pending.foto};
+    // guarda a meta do dia junto, para o dia ser avaliado com a meta da época mesmo se o perfil mudar depois
+    const meta=metaOf(dayTarget(sel,targets(profile)));if(meta) doc.meta=meta;
     try{
       await S.addMeal(doc);
       pending=null;$("#mealText").value="";$("#mealTime").value="";$("#photoClear").click();$("#aiHint").textContent="Refeição salva. Pode lançar a próxima.";
@@ -1265,8 +1340,9 @@ async function loadSaved(){
 }
 async function loadDiet(){
   if(!S) return;
-  try{const d=await S.getKV("dieta");if(d){$("#dietStamp").textContent=stampTxt("Dieta",d.ts);$("#dietOut").innerHTML=md(d.text);$("#dietBtn").textContent="Gerar nova dieta";}}catch(e){}
+  try{const d=await S.getKV("dieta");if(d){dietCur=d;$("#dietStamp").textContent=stampTxt(d.ajustada?"Dieta ajustada":"Dieta",d.ts);$("#dietOut").innerHTML=md(d.text);$("#dietBtn").textContent="Gerar nova dieta";$("#dietAdjust").hidden=!AI;}}catch(e){}
 }
+let dietCur=null;
 async function runNutri(kind){
   if(!AI){$("#nutriOut").innerHTML=`<p class="empty">Análise indisponível aqui.</p>`;return;}
   const days=kind==="semana"?weekDays(sel).filter(d=>d<=today()):[sel];
@@ -1312,7 +1388,7 @@ $("#dietBtn").addEventListener("click",async()=>{
   if(!T){$("#dietMsg").textContent="Preencha e salve seu perfil primeiro.";showTab("ajustes");return;}
   const pref=$("#dietPref").value.trim();
   if(S&&profile&&pref!==(profile.dietaPref||"")) S.setProfile({...profile,dietaPref:pref}).catch(()=>{});
-  $("#dietBtn").disabled=true;$("#dietMsg").textContent="";$("#dietStamp").textContent="";$("#dietOut").innerHTML=skel(8,"Montando sua dieta... (pode levar até 1 minuto)");
+  $("#dietBtn").disabled=true;$("#dietAskBtn").disabled=true;$("#dietMsg").textContent="";$("#dietStamp").textContent="";$("#dietOut").innerHTML=skel(8,"Montando sua dieta... (pode levar até 1 minuto)");
   const habits=eatingHabits();
   const prompt=`Você é uma nutricionista esportiva brasileira. Monte um plano alimentar de 1 dia típico para o paciente, com opções de troca. ${profileText()}
 ${pref?"Preferências e rotina: "+pref+".":""}
@@ -1328,14 +1404,61 @@ Formato em markdown simples: títulos com ### para cada refeição e seção, it
 ${STYLE}`;
   try{
     const text=await AI.text(prompt,{onText:t=>{$("#dietOut").innerHTML=md(t);},long:true});
-    const d={text,ts:Date.now()};
+    const d={text,ts:Date.now()};dietCur=d;
     $("#dietStamp").textContent=stampTxt("Dieta",d.ts);$("#dietOut").innerHTML=md(text);$("#dietBtn").textContent="Gerar nova dieta";
     S?.setKV("dieta",d).catch(()=>{});addMarco("dieta","Dieta nova");
-    $("#dietMsg").textContent="";toast("Dieta salva");
+    $("#dietMsg").textContent="";toast("Dieta salva");$("#dietAdjust").hidden=false;
   }catch(e){
     $("#dietOut").innerHTML=(e?.text?md(e.text)+`<p class="empty">(interrompida)</p>`:"");$("#dietMsg").textContent=errMsg(e);
   }
-  $("#dietBtn").disabled=false;
+  $("#dietBtn").disabled=false;$("#dietAskBtn").disabled=false;
+});
+
+/* ---------- ajustar a dieta (e anotar gostos no perfil) ---------- */
+// a IA devolve a dieta nova e, na última linha, "ANOTAR: item | item" ou "ANOTAR: nada"
+function splitAnotar(t){
+  const i=t.lastIndexOf("ANOTAR:");
+  if(i<0) return {body:t.trim(),notes:[]};
+  const notes=t.slice(i+7).split("|").map(x=>x.replace(/["“”.*]/g,"").trim())
+    .filter(x=>x&&x.length<=80&&!/^nada$/i.test(x)).slice(0,3);
+  return {body:t.slice(0,i).trim(),notes};
+}
+let dietCtl=null;
+$("#dietAskStop").addEventListener("click",()=>dietCtl?.abort());
+$("#dietAskBtn").addEventListener("click",async()=>{
+  const q=$("#dietAsk").value.trim();
+  if(!q){$("#dietAsk").focus();$("#dietAskMsg").textContent="Escreva o que quer mudar.";return;}
+  if(!AI||!dietCur){$("#dietAskMsg").textContent="Gere uma dieta primeiro.";return;}
+  const old=dietCur;dietCtl=new AbortController();
+  $("#dietAskBtn").disabled=true;$("#dietBtn").disabled=true;$("#dietAskStop").hidden=false;$("#dietAskMsg").textContent="";
+  $("#dietStamp").textContent="";$("#dietOut").innerHTML=skel(8,"Ajustando sua dieta...");
+  $("#dietOut").scrollIntoView({behavior:calmo?"auto":"smooth",block:"start"});
+  const prompt=`Você é uma nutricionista esportiva brasileira. ${profileText()}
+Esta é a dieta atual dele:
+"""
+${old.text}
+"""
+Pedido de mudança do paciente: "${q}"
+Refaça a dieta inteira já com a mudança pedida, no mesmo formato (markdown simples, títulos com ### para cada refeição e seção, itens com -, uma linha com o total do dia no começo). Continue batendo as metas diárias, com tolerância de 5%. Mude só o que precisa, o resto pode ficar igual.
+Na última linha, escreva exatamente "ANOTAR: " seguido do que vale guardar no perfil dele para sempre, separado por " | ". Só entra gosto, alimento que ele não come, alergia ou rotina que vale todo dia (ex.: "ANOTAR: não come fruta | treina às 19h"). Escreva cada item curto, do jeito que ele diria. Se o pedido for só uma troca pontual, sem dizer um gosto ou restrição, escreva "ANOTAR: nada". Não repita o que já sabemos dele.
+${STYLE}`;
+  try{
+    const text=await AI.text(prompt,{signal:dietCtl.signal,long:true,onText:t=>{$("#dietOut").innerHTML=md(splitAnotar(t).body);}});
+    const {body,notes}=splitAnotar(text);
+    if(!body) throw {code:"empty"};
+    const d={text:body,ts:Date.now(),ajustada:true};dietCur=d;
+    $("#dietStamp").textContent=stampTxt("Dieta ajustada",d.ts);$("#dietOut").innerHTML=md(body);
+    S?.setKV("dieta",d).catch(()=>{});
+    $("#dietAsk").value="";
+    let added=[];try{added=await addSabe(notes);}catch(err){}
+    if(added.length) toast("Anotei no seu perfil: "+added.join(", "),"",{label:"Desfazer",fn:()=>removeSabe(added).then(()=>toast("Tirei do seu perfil")).catch(()=>{})});
+    else toast("Dieta ajustada");
+  }catch(e){
+    // se der erro ou você parar, a dieta anterior volta
+    $("#dietStamp").textContent=stampTxt(old.ajustada?"Dieta ajustada":"Dieta",old.ts);$("#dietOut").innerHTML=md(old.text);
+    $("#dietAskMsg").textContent=e?.code==="cancelled"?"Parei. A dieta anterior continua salva.":errMsg(e);
+  }
+  $("#dietAskBtn").disabled=false;$("#dietBtn").disabled=false;$("#dietAskStop").hidden=true;
 });
 
 /* ---------- abas ---------- */
@@ -1365,7 +1488,7 @@ function subscribe(){
 $("#prev").addEventListener("click",()=>{sel=addDays(sel,-1);subscribe();render();});
 $("#next").addEventListener("click",()=>{if(sel<today()){sel=addDays(sel,1);subscribe();render();}});
 
-render();fillProfile();
+render();fillProfile();renderSabe();
 (async()=>{
   const r=await connect();
   S=r.S;AI=r.AI;
@@ -1377,6 +1500,7 @@ render();fillProfile();
   S.onProfile(p=>{
     profile=p;
     if(!document.activeElement?.closest("#profileForm")) fillProfile();
+    renderSabe();
     if(!profile&&!everHadTab) showTab("ajustes");
     maybeRecordAval();render();
   });
